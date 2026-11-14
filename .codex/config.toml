@@ -1,0 +1,9 @@
+# Generated from agentboard/team.json by agentboard/generate.mjs. Edit team.json, then re-run it.
+# Multi-agent is on by default in Codex 0.166 ([features] multi_agent is stable and enabled), so no flag is set here.
+# Codex only reads this file once the project is trusted.
+
+[agents]
+# Spawned agents open at once (alias of max_concurrent_threads_per_session). One per Codex teammate.
+max_threads = 3
+# Agents may not spawn their own agents (honoured by the v1 backend; v2 ignores it).
+max_depth = 1

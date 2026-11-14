@@ -1,0 +1,137 @@
+{
+  "description": "AgentBoard status feed. Generated from agentboard/team.json by agentboard/generate.mjs. Edit team.json, then re-run it.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex SessionStart; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex UserPromptSubmit; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex PreToolUse; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex PostToolUse; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex PermissionRequest; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex SubagentStart; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex SubagentStop; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex Stop; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex PreCompact; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex Interrupt; exit 0' >/dev/null 2>&1; true",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'd=$PWD; while [ ! -f \"$d/agentboard/report.mjs\" ]; do p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done; node \"$d/agentboard/report.mjs\" --hook codex SessionEnd; exit 0' >/dev/null 2>&1; true",
+            "async": false,
+            "timeout": 2
+          }
+        ]
+      }
+    ]
+  }
+}

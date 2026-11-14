@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- AgentBoard app icon: a chibi agent peeking over a laptop at an isometric desk. Rendered by make-icon.sh. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#de7d59"/>
+      <stop offset="1" stop-color="#bd5835"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.32" cy="0.18" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+    <clipPath id="tile"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  </defs>
+
+  <!-- tile -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <g clip-path="url(#tile)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#glow)"/>
+
+    <!-- floor tile + shadow under the desk -->
+    <path d="M512 604 L820 758 L512 912 L204 758 Z" fill="#ffffff" fill-opacity="0.09"/>
+    <path d="M512 640 L800 784 L512 900 L224 784 Z" fill="#7a2c12" fill-opacity="0.22"/>
+
+    <!-- body (behind the desk) -->
+    <path d="M330 640 C330 540 410 488 512 488 C614 488 694 540 694 640 Z" fill="#2f6f6a"/>
+    <path d="M462 492 L512 540 L562 492 Z" fill="#fbeedc"/>
+
+    <!-- head -->
+    <circle cx="512" cy="372" r="140" fill="#ffe1c4"/>
+    <!-- hair -->
+    <path d="M366 392 C352 268 430 214 512 214 C598 214 676 266 658 392
+             C644 352 622 322 596 308 C572 330 528 338 486 312
+             C462 340 418 360 366 392 Z" fill="#3a2a22"/>
+    <path d="M512 216 C506 188 520 166 546 160" stroke="#3a2a22" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <!-- face -->
+    <circle cx="462" cy="398" r="19" fill="#2a1f1a"/>
+    <circle cx="562" cy="398" r="19" fill="#2a1f1a"/>
+    <circle cx="456" cy="391" r="6" fill="#ffffff"/>
+    <circle cx="556" cy="391" r="6" fill="#ffffff"/>
+    <ellipse cx="424" cy="440" rx="24" ry="14" fill="#f2907a" fill-opacity="0.75"/>
+    <ellipse cx="600" cy="440" rx="24" ry="14" fill="#f2907a" fill-opacity="0.75"/>
+    <path d="M488 444 Q512 468 536 444" stroke="#2a1f1a" stroke-width="11" fill="none" stroke-linecap="round"/>
+
+    <!-- desk legs -->
+    <rect x="236" y="676" width="20" height="64" rx="5" fill="#a9825d"/>
+    <rect x="768" y="676" width="20" height="64" rx="5" fill="#8f6c4b"/>
+    <rect x="502" y="816" width="20" height="62" rx="5" fill="#9c7753"/>
+    <!-- desk slab: top, left face, right face -->
+    <path d="M232 640 L512 780 L512 826 L232 686 Z" fill="#e7c9a5"/>
+    <path d="M512 780 L792 640 L792 686 L512 826 Z" fill="#d1ab82"/>
+    <path d="M512 500 L792 640 L512 780 L232 640 Z" fill="#fbeedc"/>
+
+    <!-- laptop (we see the back of the lid) -->
+    <path d="M396 640 L628 640 L640 656 L384 656 Z" fill="#c9cfd6"/>
+    <rect x="400" y="518" width="224" height="126" rx="14" fill="#eef1f4"/>
+    <rect x="400" y="518" width="224" height="126" rx="14" fill="none" stroke="#c9cfd6" stroke-width="4"/>
+    <path d="M512 596 C498 584 486 576 486 563 C486 554 493 548 501 548 C506 548 510 551 512 555
+             C514 551 518 548 523 548 C531 548 538 554 538 563 C538 576 526 584 512 596 Z" fill="#de7d59"/>
+
+    <!-- mug -->
+    <ellipse cx="690" cy="664" rx="30" ry="11" fill="#b8916a" fill-opacity="0.5"/>
+    <path d="M668 620 L668 656 C668 670 712 670 712 656 L712 620 Z" fill="#2f6f6a"/>
+    <ellipse cx="690" cy="620" rx="22" ry="9" fill="#245a56"/>
+    <path d="M712 630 C729 630 729 652 712 652" stroke="#2f6f6a" stroke-width="7" fill="none"/>
+  </g>
+</svg>
