@@ -1,0 +1,11 @@
+{
+  "name": "agent-visualisation",
+  "owner": { "name": "damoninator" },
+  "plugins": [
+    {
+      "name": "pixel-ai-office",
+      "source": "./",
+      "description": "A cozy pixel-art office that shows what each AI agent (Claude, ChatGPT, DeepSeek, Gemini, Grok...) behind your router is doing, with you in the CEO seat."
+    }
+  ]
+}
