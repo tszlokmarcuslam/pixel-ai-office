@@ -1,63 +1,232 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Pixel AI Office</title>
 <style>
-html,body{margin:0;height:100%;background:#140d0a;overflow:hidden;color:#fff;font:bold 14px monospace}
-#bar{height:28px;line-height:28px;text-align:center;background:#000a;letter-spacing:1px}
-#bar span{color:#9fe3c4}
+/* --- shared layout --- */
+html,body{margin:0;height:100%;background:#140d0a;overflow:hidden;color:#f5f5f7}
 canvas{display:block;margin:0 auto;image-rendering:pixelated}
-#wrap{height:calc(100vh - 28px);overflow:auto}
-#zoom{position:fixed;top:3px;left:8px;display:flex;gap:4px;z-index:2}
-#zoom button{font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;padding:1px 8px;cursor:pointer}
-#teamBtn{position:fixed;top:3px;right:120px;z-index:2;font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;padding:1px 8px;cursor:pointer}
-#roster{position:fixed;top:30px;right:8px;z-index:3;width:300px;max-height:70vh;overflow:auto;background:#2a1a12f2;border:3px solid #d4a640;padding:4px 10px;font:12px monospace}
-#roster h4{margin:8px 0 4px;color:#ffe9a8}
-#roster .who{display:flex;gap:6px;align-items:baseline;margin:3px 0}
+#bar{position:fixed;top:0;left:0;right:0;height:36px;z-index:1;display:flex;align-items:center;padding-left:150px;white-space:nowrap;overflow:hidden;box-sizing:border-box}
+#wrap{position:relative;height:100vh;box-sizing:border-box;padding-top:36px;overflow:auto;cursor:grab;touch-action:none;overscroll-behavior:contain}
+#zoom{position:fixed;top:6px;left:10px;z-index:2;display:flex}
+#tools{position:fixed;top:6px;right:10px;z-index:2;display:flex;gap:2px}
+#tools > button,#zoom button{display:flex;align-items:center;gap:6px;cursor:pointer}
+.ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.px{width:14px;height:14px;image-rendering:pixelated;flex:none}
+.caret{opacity:.55;font-size:9px}
+#langMenu,#themeMenu,#roster{position:fixed;top:40px;right:10px;z-index:3;margin:0;list-style:none}
+#langMenu button,#themeMenu button{display:block;width:100%;text-align:left;font:inherit;background:none;color:inherit;border:0;cursor:pointer}
+#themeMenu i{display:inline-block;width:10px;height:10px;margin-right:8px;vertical-align:-1px}
+#roster{width:300px;max-height:70vh;overflow:auto}
+#roster .who{display:flex;gap:8px;align-items:baseline;margin:4px 0}
 #roster .who i{width:8px;height:8px;flex:none}
-#roster .who b{flex:none;width:72px}
-#roster .who span{color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#roster .none{color:#888;margin:2px 0}
-#gear{z-index:2;position:fixed;top:3px;right:8px;font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;padding:1px 8px;cursor:pointer}
-dialog{background:#2a1a12;color:#fff;border:3px solid #d4a640;font:13px monospace;min-width:340px}
-dialog .row{display:flex;align-items:center;gap:8px;margin:6px 0}
+#roster .who b{flex:none;width:76px}
+#roster .who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+dialog{min-width:340px}
+dialog .row{display:flex;align-items:center;gap:8px;margin:8px 0}
 dialog .row b{width:90px}
 dialog img{width:24px;height:32px;image-rendering:pixelated;background:#5d7c37}
-dialog button{font:inherit;background:#5a2e1c;color:#ffe9a8;border:1px solid #d4a640;cursor:pointer}
+dialog button{font:inherit;cursor:pointer}
+
+/* --- modern (default): thin translucent macOS-style bar, system text, rounded soft panels --- */
+body{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif}
+#bar{background:rgba(28,24,26,.55);-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:rgba(255,255,255,.6)}
+#bar .dot{color:#30d158;margin-right:6px;font-size:9px}
+#conn{color:rgba(255,255,255,.85);overflow:hidden;text-overflow:ellipsis}
+#zoom{background:rgba(255,255,255,.08);border-radius:7px;padding:2px}
+#zoom button{font:inherit;height:22px;min-width:26px;justify-content:center;background:none;color:#f5f5f7;border:0;border-radius:5px;padding:0 8px}
+#tools > button{font:inherit;height:24px;background:none;color:#f5f5f7;border:0;border-radius:6px;padding:0 9px}
+#tools > button:hover,#zoom button:hover,#tools > button[aria-expanded="true"],#tools > button[aria-pressed="true"]{background:rgba(255,255,255,.14)}
+#tools > button:focus-visible,#zoom button:focus-visible,#langMenu button:focus-visible,#themeMenu button:focus-visible,dialog button:focus-visible{outline:2px solid #0a84ff;outline-offset:1px}
+#langMenu,#themeMenu,#roster,dialog{background:rgba(40,36,40,.82);-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.3);color:#f5f5f7}
+#langMenu,#themeMenu{padding:5px;min-width:170px}
+#langMenu button,#themeMenu button{padding:5px 10px 5px 26px;border-radius:6px;position:relative}
+#langMenu button:hover,#themeMenu button:hover{background:#0a84ff;color:#fff}
+#langMenu button[aria-checked="true"]::before,#themeMenu button[aria-checked="true"]::before{content:'✓';position:absolute;left:9px}
+#themeMenu i{border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+#roster{padding:8px 14px 10px}
+#roster h4{margin:8px 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5)}
+#roster .who i{border-radius:50%}
+#roster .who b{font-weight:600}
+#roster .who span{color:rgba(255,255,255,.65)}
+#roster .none{color:rgba(255,255,255,.4);margin:2px 0}
+dialog{padding:16px 20px}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog h3{margin:0 0 6px;font-size:15px;font-weight:600}
+dialog p{color:rgba(255,255,255,.7)}
+dialog img{border-radius:4px}
+dialog button{background:rgba(255,255,255,.14);color:#f5f5f7;border:0;border-radius:6px;padding:4px 12px}
+dialog button:hover{background:rgba(255,255,255,.22)}
+
+/* --- retro: the full pixel look --- */
+body.retro{font:bold 14px monospace}
+body.retro #bar{background:#000a;-webkit-backdrop-filter:none;backdrop-filter:none;border:0;font:bold 14px monospace;letter-spacing:1px;color:#fff}
+body.retro #bar .dot{color:#9fe3c4}
+body.retro #conn{color:#9fe3c4}
+body.retro #zoom{background:none;padding:0;gap:4px}
+body.retro #zoom button,body.retro #tools > button{font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;border-radius:0;padding:1px 8px;height:auto}
+body.retro #tools{gap:6px}
+body.retro #tools > button:hover,body.retro #zoom button:hover,body.retro #tools > button[aria-expanded="true"],body.retro #tools > button[aria-pressed="true"]{background:#7a4026}
+body.retro .px{width:16px;height:16px}
+body.retro #langMenu,body.retro #themeMenu,body.retro #roster,body.retro dialog{background:#2a1a12f2;-webkit-backdrop-filter:none;backdrop-filter:none;border:3px solid #d4a640;border-radius:0;box-shadow:none;font:13px monospace;color:#fff}
+body.retro #langMenu,body.retro #themeMenu{padding:4px}
+body.retro #langMenu button,body.retro #themeMenu button{padding:4px 10px;border-radius:0}
+body.retro #langMenu button:hover,body.retro #themeMenu button:hover{background:#5a2e1c;color:#ffe9a8}
+body.retro #langMenu button[aria-checked="true"],body.retro #themeMenu button[aria-checked="true"]{color:#ffe9a8}
+body.retro #langMenu button[aria-checked="true"]::before,body.retro #themeMenu button[aria-checked="true"]::before{content:'▸ ';position:static}
+body.retro #themeMenu i{border-radius:0;border:1px solid #120b08;box-shadow:none}
+body.retro #roster{font:12px monospace;padding:4px 10px}
+body.retro #roster h4{color:#ffe9a8;font-size:12px;text-transform:none;letter-spacing:0;font-weight:bold}
+body.retro #roster .who i{border-radius:0}
+body.retro #roster .who span{color:#ccc}
+body.retro dialog h3{font-size:15px}
+body.retro dialog p{color:#fff}
+body.retro dialog button{background:#5a2e1c;color:#ffe9a8;border:1px solid #d4a640;border-radius:0}
+body.retro dialog img{border-radius:0}
 </style></head>
 <body>
-<div id="bar" role="status">AI OFFICE · <span id="conn">connecting…</span></div>
-<button id="teamBtn" type="button" aria-expanded="false" aria-controls="roster">👥 Team ▾</button>
+<div id="bar" role="status"><span class="dot">●</span><span id="conn">…</span></div>
+<div id="tools">
+  <button id="themeBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu"><img id="lampIcon" class="px" alt=""><span id="themeName"></span><span class="caret">▼</span></button>
+  <button id="langBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="langMenu"><img id="globe" class="px" alt=""><span id="langName"></span><span class="caret">▼</span></button>
+  <button id="teamBtn" type="button" aria-expanded="false" aria-controls="roster"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14c0-2.6 2-4.2 4.5-4.2s4.5 1.6 4.5 4.2"/><circle cx="11.5" cy="6" r="2"/><path d="M11.8 10.2c1.7.2 2.9 1.5 2.9 3.6"/></svg><span data-i18n="team">Team</span><span class="caret">▼</span></button>
+  <button id="gear" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2.5"/><circle cx="6" cy="6.2" r="1.4"/><path d="M14 10.5 10.5 7 3 14"/></svg><span data-i18n="sprites">Sprites</span></button>
+  <button id="retroBtn" type="button" aria-pressed="false"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z"/></svg><span data-i18n="retro">Retro UI</span></button>
+</div>
+<ul id="langMenu" role="menu" hidden></ul>
+<ul id="themeMenu" role="menu" hidden></ul>
 <div id="roster" hidden></div>
-<button id="gear" type="button">⚙ Sprites</button>
 <dialog id="dlg" aria-labelledby="dlgT">
-  <h3 id="dlgT">Agent sprites</h3>
-  <p>Upload a PNG for any agent. Transparent backgrounds work best; it is fitted into a 24×32 pixel box. Saved in this browser.</p>
+  <h3 id="dlgT" data-i18n="dlgTitle">Agent sprites</h3>
+  <p data-i18n="dlgHelp">Upload a PNG for any agent. Transparent backgrounds work best; it is fitted into a 24×32 pixel box. Saved in this browser.</p>
   <div id="list"></div>
-  <p><button type="button" onclick="dlg.close()">Done</button></p>
+  <p><button type="button" onclick="dlg.close()" data-i18n="done">Done</button></p>
 </dialog>
-<div id="zoom"><button id="zout" type="button" aria-label="Zoom out">−</button><button id="zfit" type="button">Fit</button><button id="zin" type="button" aria-label="Zoom in">+</button></div>
+<div id="zoom"><button id="zout" type="button" data-i18n-label="zoomOut" aria-label="Zoom out">−</button><button id="zfit" type="button" data-i18n="fit">Fit</button><button id="zin" type="button" data-i18n-label="zoomIn" aria-label="Zoom in">+</button></div>
 <div id="wrap"><canvas id="c" aria-label="Pixel office showing what each AI agent is doing"></canvas></div>
 <script>
 'use strict';
+// ---------- languages ----------
+const LANGS = {
+  en: { retro: 'Retro UI', theme: 'Theme', themes: { cafe: 'Café', cabin: 'Snowy cabin', sakura: 'Sakura', matcha: 'Tea house', starlight: 'Starlight' }, name: 'English', title: 'AI OFFICE', connecting: 'connecting…', live: 'live', reconnecting: 'reconnecting…', demo: 'demo', team: 'Team', sprites: 'Sprites', fit: 'Fit',
+    zoomIn: 'Zoom in', zoomOut: 'Zoom out', dlgTitle: 'Agent sprites', dlgHelp: 'Upload a PNG for any agent. Transparent backgrounds work best; it is fitted into a 24×32 pixel box. Saved in this browser.',
+    done: 'Done', reset: 'Reset', ceo: 'CEO (you)', stats: (n, m) => n + ' routed · ' + m + ' handed in', workingN: (n) => 'Working (' + n + ')', restingN: (n) => 'Resting (' + n + ')', nobody: 'Nobody',
+    pngOnly: 'Please choose a PNG file.', full: 'Could not save: browser storage is full.', spriteFor: (n) => 'Sprite for ' + n, language: 'Language',
+    st: { working: 'working', thinking: 'thinking', waiting: 'waiting', error: 'error', done: 'done', idle: 'idle' },
+    where: { away: 'out of office', ceo: 'handing in', door: 'heading out', seat: 'walking back' } },
+  zh: { retro: '复古界面', theme: '主题', themes: { cafe: '咖啡馆', cabin: '雪夜小屋', sakura: '樱花', matcha: '茶室', starlight: '星光' }, name: '简体中文', title: 'AI 办公室', connecting: '连接中…', live: '在线', reconnecting: '重新连接中…', demo: '演示', team: '团队', sprites: '形象', fit: '适应',
+    zoomIn: '放大', zoomOut: '缩小', dlgTitle: '角色形象', dlgHelp: '为任一角色上传 PNG。透明背景效果最好，图片会缩放到 24×32 像素。保存在此浏览器中。',
+    done: '完成', reset: '重置', ceo: 'CEO（你）', stats: (n, m) => '已分派 ' + n + ' · 已交 ' + m, workingN: (n) => '工作中（' + n + '）', restingN: (n) => '休息中（' + n + '）', nobody: '无人',
+    pngOnly: '请选择 PNG 文件。', full: '无法保存：浏览器存储已满。', spriteFor: (n) => n + ' 的形象', language: '语言',
+    st: { working: '工作中', thinking: '思考中', waiting: '等待中', error: '出错', done: '完成', idle: '空闲' },
+    where: { away: '不在办公室', ceo: '交文件中', door: '下班中', seat: '回座位' } },
+  ja: { retro: 'レトロUI', theme: 'テーマ', themes: { cafe: 'カフェ', cabin: '雪の山小屋', sakura: '桜', matcha: '茶室', starlight: '星空' }, name: '日本語', title: 'AI オフィス', connecting: '接続中…', live: 'ライブ', reconnecting: '再接続中…', demo: 'デモ', team: 'チーム', sprites: 'スプライト', fit: '全体',
+    zoomIn: '拡大', zoomOut: '縮小', dlgTitle: 'エージェントのスプライト', dlgHelp: '各エージェントの PNG をアップロードできます。透過背景がおすすめです。24×32 ピクセルに収まります。このブラウザに保存されます。',
+    done: '完了', reset: 'リセット', ceo: 'CEO（あなた）', stats: (n, m) => '振り分け ' + n + ' · 提出 ' + m, workingN: (n) => '作業中（' + n + '）', restingN: (n) => '休憩中（' + n + '）', nobody: 'なし',
+    pngOnly: 'PNG ファイルを選んでください。', full: '保存できません：ブラウザの容量がいっぱいです。', spriteFor: (n) => n + ' のスプライト', language: '言語',
+    st: { working: '作業中', thinking: '考え中', waiting: '待機中', error: 'エラー', done: '完了', idle: '休憩' },
+    where: { away: '不在', ceo: '提出中', door: '退勤中', seat: '席に戻り中' } },
+  ko: { retro: '레트로 UI', theme: '테마', themes: { cafe: '카페', cabin: '눈 오는 오두막', sakura: '벚꽃', matcha: '다실', starlight: '별빛' }, name: '한국어', title: 'AI 오피스', connecting: '연결 중…', live: '라이브', reconnecting: '다시 연결 중…', demo: '데모', team: '팀', sprites: '스프라이트', fit: '맞춤',
+    zoomIn: '확대', zoomOut: '축소', dlgTitle: '에이전트 스프라이트', dlgHelp: '에이전트별 PNG를 올릴 수 있어요. 투명 배경이 가장 좋고, 24×32 픽셀에 맞춰집니다. 이 브라우저에 저장돼요.',
+    done: '완료', reset: '초기화', ceo: 'CEO (나)', stats: (n, m) => '배정 ' + n + ' · 제출 ' + m, workingN: (n) => '작업 중 (' + n + ')', restingN: (n) => '휴식 중 (' + n + ')', nobody: '없음',
+    pngOnly: 'PNG 파일을 선택하세요.', full: '저장할 수 없어요: 브라우저 저장 공간이 가득 찼습니다.', spriteFor: (n) => n + ' 스프라이트', language: '언어',
+    st: { working: '작업 중', thinking: '생각 중', waiting: '대기 중', error: '오류', done: '완료', idle: '휴식' },
+    where: { away: '부재 중', ceo: '제출 중', door: '퇴근 중', seat: '자리로 복귀' } },
+  es: { retro: 'UI retro', theme: 'Tema', themes: { cafe: 'Café', cabin: 'Cabaña nevada', sakura: 'Sakura', matcha: 'Casa de té', starlight: 'Luz de estrellas' }, name: 'Español', title: 'OFICINA IA', connecting: 'conectando…', live: 'en vivo', reconnecting: 'reconectando…', demo: 'demo', team: 'Equipo', sprites: 'Sprites', fit: 'Ajustar',
+    zoomIn: 'Acercar', zoomOut: 'Alejar', dlgTitle: 'Sprites de agentes', dlgHelp: 'Sube un PNG para cualquier agente. Mejor con fondo transparente; se ajusta a 24×32 píxeles. Se guarda en este navegador.',
+    done: 'Listo', reset: 'Restablecer', ceo: 'CEO (tú)', stats: (n, m) => n + ' asignadas · ' + m + ' entregadas', workingN: (n) => 'Trabajando (' + n + ')', restingN: (n) => 'Descansando (' + n + ')', nobody: 'Nadie',
+    pngOnly: 'Elige un archivo PNG.', full: 'No se pudo guardar: el almacenamiento del navegador está lleno.', spriteFor: (n) => 'Sprite de ' + n, language: 'Idioma',
+    st: { working: 'trabajando', thinking: 'pensando', waiting: 'esperando', error: 'error', done: 'listo', idle: 'libre' },
+    where: { away: 'fuera', ceo: 'entregando', door: 'saliendo', seat: 'volviendo' } },
+  fr: { retro: 'UI rétro', theme: 'Thème', themes: { cafe: 'Café', cabin: 'Chalet enneigé', sakura: 'Sakura', matcha: 'Maison de thé', starlight: 'Nuit étoilée' }, name: 'Français', title: 'BUREAU IA', connecting: 'connexion…', live: 'en direct', reconnecting: 'reconnexion…', demo: 'démo', team: 'Équipe', sprites: 'Sprites', fit: 'Ajuster',
+    zoomIn: 'Zoomer', zoomOut: 'Dézoomer', dlgTitle: 'Sprites des agents', dlgHelp: 'Importez un PNG pour n’importe quel agent. Un fond transparent marche mieux ; il est ajusté à 24×32 pixels. Enregistré dans ce navigateur.',
+    done: 'OK', reset: 'Réinitialiser', ceo: 'PDG (vous)', stats: (n, m) => n + ' attribuées · ' + m + ' remises', workingN: (n) => 'Au travail (' + n + ')', restingN: (n) => 'En pause (' + n + ')', nobody: 'Personne',
+    pngOnly: 'Choisissez un fichier PNG.', full: 'Enregistrement impossible : le stockage du navigateur est plein.', spriteFor: (n) => 'Sprite de ' + n, language: 'Langue',
+    st: { working: 'au travail', thinking: 'réfléchit', waiting: 'attend', error: 'erreur', done: 'fini', idle: 'libre' },
+    where: { away: 'absent', ceo: 'remet', door: 'sort', seat: 'revient' } },
+};
+let lang = localStorage.getItem('lang') || Object.keys(LANGS).find((k) => (navigator.language || '').toLowerCase().startsWith(k)) || 'en';
+if (!LANGS[lang]) lang = 'en';
+const L = () => LANGS[lang];
+const tr = (k, ...a) => { const v = L()[k] ?? LANGS.en[k]; return typeof v === 'function' ? v(...a) : v; };
 let W = 320; const H = 180;
 const off = document.createElement('canvas'); off.width = W * 2; off.height = H * 2;
 const g = off.getContext('2d');
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let S = 1;
-let zoom = 0; // 0 = fit to window; each step is half a scale level
+// ---------- smooth zoom + pan ----------
+// VS is the on-screen scale (fit x zoom) and moves every frame; S is the canvas's pixel scale, which only
+// catches up once the view stops moving (re-allocating the canvas every frame is what made zoom stutter).
+// While moving, CSS stretches the canvas. Zoom keeps the room point under the cursor still, and panning
+// (two-finger scroll, drag, flick glide) works at the same time as zooming.
+const wrap = document.getElementById('wrap');
+let VS = 1, zoomCur = 1, zoomGoal = 1, focus = null, velX = 0, velY = 0, drag = null, settleAt = 0;
+const fitScale = () => Math.min(innerWidth / W, (innerHeight - 36) / H); // 36 = top bar
 function fit() {
-  const f = Math.min(innerWidth / W, (innerHeight - 28) / H);
-  S = Math.max(0.5, (f >= 1 ? Math.floor(f) : Math.floor(f * 2) / 2 || 0.5) + zoom * 0.5);
-  cv.width = Math.round(W * S); cv.height = Math.round(H * S);
+  VS = fitScale() * zoomCur;
+  cv.style.width = W * VS + 'px'; cv.style.height = H * VS + 'px';
+  settleAt = performance.now() + 120;
 }
-addEventListener('resize', fit); fit();
-let wheelAcc = 0;
-const setZoom = (d) => { zoom = d === 0 ? 0 : Math.max(-6, Math.min(12, zoom + d)); fit(); };
+function settle() { // sharp canvas at the final scale
+  if (S === VS) return;
+  S = VS; cv.width = Math.round(W * S); cv.height = Math.round(H * S);
+}
+addEventListener('resize', fit); fit(); settle();
+const roomAt = (lx, ly) => [(wrap.scrollLeft + lx - cv.offsetLeft) / VS, (wrap.scrollTop + ly - cv.offsetTop) / VS];
+function local(clientX, clientY) { const r = wrap.getBoundingClientRect(); return [(clientX ?? r.left + r.width / 2) - r.left, (clientY ?? r.top + r.height / 2) - r.top]; }
+function pin() { // put the focus room point back under its screen point
+  if (!focus) return;
+  wrap.scrollLeft = focus.wx * VS + cv.offsetLeft - focus.lx;
+  wrap.scrollTop = focus.wy * VS + cv.offsetTop - focus.ly;
+}
+function zoomAt(goal, clientX, clientY, instant) {
+  zoomGoal = Math.max(0.6, Math.min(8, goal));
+  const [lx, ly] = local(clientX, clientY), [wx, wy] = roomAt(lx, ly);
+  focus = { lx, ly, wx, wy };
+  if (instant) { zoomCur = zoomGoal; fit(); pin(); }
+}
+function panBy(dx, dy) { // works mid-zoom: slide the focus with the view instead of fighting it
+  if (focus) { focus.lx -= dx; focus.ly -= dy; }
+  wrap.scrollLeft += dx; wrap.scrollTop += dy;
+}
+const setZoom = (d) => zoomAt(d === 0 ? 1 : zoomGoal * Math.pow(1.25, d));
+function stepView(dt) {
+  if (focus && zoomCur !== zoomGoal) { // eased zoom (buttons, mouse wheel)
+    zoomCur += (zoomGoal - zoomCur) * (1 - Math.exp(-dt * 14));
+    if (Math.abs(zoomGoal - zoomCur) < 0.001) zoomCur = zoomGoal;
+    fit(); pin();
+  }
+  if (!drag && (Math.abs(velX) > 5 || Math.abs(velY) > 5)) { // glide after a flick
+    panBy(-velX * dt, -velY * dt);
+    const f = Math.exp(-dt * 5); velX *= f; velY *= f;
+  }
+  if (zoomCur === zoomGoal && !drag && performance.now() > settleAt) { focus = null; settle(); }
+}
 document.getElementById('zin').onclick = () => setZoom(1);
 document.getElementById('zout').onclick = () => setZoom(-1);
 document.getElementById('zfit').onclick = () => setZoom(0);
-document.getElementById('wrap').addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault();
-  // pinch/ctrl+wheel sends many small deltas: zoom one step per ~80 px of scroll
-  wheelAcc += e.deltaY; if (Math.abs(wheelAcc) >= 80) { setZoom(wheelAcc < 0 ? 1 : -1); wheelAcc = 0; } }, { passive: false });
+wrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const px = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientHeight : 1; // lines/pages -> px
+  if (e.ctrlKey) {
+    // trackpad pinch arrives as many small ctrl+wheel deltas: follow the fingers 1:1, no easing lag.
+    // A mouse wheel with Ctrl sends big notches: ease one step per notch instead.
+    if (Math.abs(e.deltaY * px) < 50) zoomAt(zoomCur * Math.exp(-e.deltaY * px * 0.01), e.clientX, e.clientY, true);
+    else zoomAt(zoomGoal * Math.pow(1.25, e.deltaY < 0 ? 1 : -1), e.clientX, e.clientY);
+  } else panBy((e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * px, (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * px); // two-finger scroll pans
+}, { passive: false });
+wrap.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target !== cv) return;
+  drag = { x: e.clientX, y: e.clientY, t: performance.now() }; velX = velY = 0;
+  wrap.setPointerCapture(e.pointerId); wrap.style.cursor = 'grabbing';
+});
+wrap.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const now = performance.now(), dx = e.clientX - drag.x, dy = e.clientY - drag.y, ms = Math.max(1, now - drag.t);
+  panBy(-dx, -dy);
+  velX = velX * 0.6 + (dx / ms * 1000) * 0.4; velY = velY * 0.6 + (dy / ms * 1000) * 0.4; // smoothed px/s for the glide
+  drag = { x: e.clientX, y: e.clientY, t: now };
+});
+const endDrag = () => { if (!drag) return; if (performance.now() - drag.t > 80) velX = velY = 0; drag = null; wrap.style.cursor = ''; };
+wrap.addEventListener('pointerup', endDrag); wrap.addEventListener('pointercancel', endDrag);
 
 // ---------- sprites: 12x16, one char per pixel ----------
 const mirror = (half) => half.map((h) => h + [...h].reverse().join(''));
@@ -272,9 +441,9 @@ function outlined(src, color) { // 1 px border around every opaque pixel; output
 // Grok: the reference is a bust, so shrink just the head to chibi size and give her a small drawn body
 // (black dress with red trim, gold belt, little legs) like the other full-body agents.
 function composeGrok(img) {
-  const head = unsticker(img, { clip: [0, 0, 225, 116], pixelH: 28 });
+  const head = unsticker(img, { clip: [0, 0, 225, 170], pixelH: 41 }); // whole bust so the curls aren't cut off
   const hx = head.getContext('2d'), hd = hx.getImageData(0, 0, head.width, head.height), e = hd.data, W2 = head.width;
-  for (let pass = 0; pass < 2; pass++) { // white specks between curls (enclosed background) touching the edge: clear them
+  for (let pass = 0; pass < 4; pass++) { // white specks between curls (enclosed background) touching the edge: clear them
     const clear = [];
     for (let y = 0; y < head.height; y++) for (let x = 0; x < W2; x++) {
       const i = (y * W2 + x) * 4, t = (xx, yy) => xx < 0 || yy < 0 || xx >= W2 || yy >= head.height || !e[(yy * W2 + xx) * 4 + 3];
@@ -282,9 +451,19 @@ function composeGrok(img) {
     }
     for (const i of clear) e[i + 3] = 0;
   }
+  // white specks still enclosed by hair: take the average colour of their non-white neighbours (skip the face)
+  const white = (i) => e[i + 3] && e[i] > 232 && e[i + 1] > 228 && e[i + 2] > 222;
+  for (let y = 0; y < head.height; y++) for (let x = 0; x < W2; x++) {
+    const i = (y * W2 + x) * 4; if (!white(i) || (y > 17 && y < 32 && x > 14 && x < 36)) continue;
+    let n = 0, rr = 0, gg = 0, bb = 0;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) {
+      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W2 || yy >= head.height) continue;
+      const j = (yy * W2 + xx) * 4; if (!e[j + 3] || white(j)) continue; n++; rr += e[j]; gg += e[j + 1]; bb += e[j + 2];
+    }
+    if (n) { e[i] = rr / n; e[i + 1] = gg / n; e[i + 2] = bb / n; }
+  }
   hx.putImageData(hd, 0, 0);
-  const body = ['........RDDDD', '.......DDDDDD', '......SDDRDDD', '.....SSDDDDDD', '......DDDGGGG', '.....DDDDDRDD', '....DDDDDDDDD',
-    '...RDDDDDDDDD', '..RRDDDDRDDDD', '..RRRRDDDRRRR', '.......SS....', '.......SS....', '.......KK....', '......KKK....', '.............'];
+  const body = ['.......SS....', '.......SS....', '.......SS....', '.......KK....', '......KKK....']; // legs under the dress
   const pal = { R: '#8e1f3a', D: '#2a1d2e', G: '#c9a24a', S: '#fce3c9', K: '#1a1220' };
   const rows = body.map((h) => h + [...h].reverse().join('')), bw = rows[0].length, bh = rows.length;
   const c = document.createElement('canvas'); c.width = Math.max(head.width, bw); c.height = head.height + bh - 1;
@@ -296,7 +475,7 @@ function composeGrok(img) {
 // rigs for PNG art in sprites/ (used instead of the drawn rig when that PNG loads)
 const PNG_RIG = {
   // her head is turned the other way from her body in the art: headFlip mirrors the head slice so both face the same way
-  grok: { compose: composeGrok, outline: '#2b1e2e', head: 29, legs: 39, eyes: [[18, 21, 5, 4], [27, 21, 5, 4]], skin: '#fbe0cc', lash: '#2b1e2e' },
+  grok: { compose: composeGrok, outline: '#2b1e2e', head: 29, legs: 42, eyes: [[18, 20, 5, 5], [27, 20, 5, 5]], skin: '#fbe0cc', lash: '#2b1e2e' },
   // pale art: a 1 px outline keeps her readable on the floor (coords below include that +1 padding)
   chatgpt: { outline: '#5a4f80', head: 24, legs: 39, eyes: [[12, 17, 5, 5], [21, 17, 5, 4]], skin: '#fbe4dc', lash: '#5a4f80' },
   gemini: { head: 23, legs: 38, headFlip: true, facesLeft: true, eyes: [[18, 15, 6, 4], [9, 15, 6, 4]], skin: '#fbe0d6', lash: '#3a2a5a' },
@@ -432,6 +611,56 @@ const GEM_EXTRAS = [
   [26, 36, 'HH'], [27, 37, 'HH'], [28, 38, 'kk'], [28, 39, 'kk'], [27, 40, 'kk'], // tail
 ];
 bundled.gemini = drawnSprite(GEM_HALF, GEM_PAL, GEM_EXTRAS);
+// CEO (you): same chibi build as the agents; gold crown with gems, brown hair, navy suit, white shirt, red tie
+const CEO_HALF = [
+  '..........Y....Y', // crown points
+  '..........YY..YY',
+  '..........YRYYYY', // gems
+  '.......hHYYYYYYY',
+  '.....hHHHHHHHHHH',
+  '....hHHHHHHHHHHH',
+  '...hHHHHHHHHHHHH',
+  '...HHHHHHHHHHHHH',
+  '....hHHHHHHHHHHH',
+  '...hHHHHHHHHHHHH',
+  '...HHHHHHHHhHHHh',
+  '..hHHHHHHHHhHHHH',
+  '..HHHHHHHhHShHHh', // bangs
+  '..HHHHHHhSShSSSh',
+  '..HHHHhSKKKSSSSS', // eyes: 5 wide x 6 tall, no glare
+  '..HHHHSKKKKKSSSS',
+  '..HHHSSKEEEKSSSS',
+  '..HHHSSKEEEKSSSS',
+  '..HHHSSKEeeKSSSS',
+  '..HHhSSSKKKSSSSS',
+  '...HSPPPSSSSSSSS', // blush
+  '....SSSSSSSSSSSm',
+  '.....SSSSSSSSSSS',
+  '......sSSSSSSSSS',
+  '........sssSSSSS',
+  '.........UUWWWTT', // collar, tie
+  '........UUUUWWTT',
+  '.......UUUUUUWTT',
+  '......SUUUUUUWTT',
+  '......SUUUUUUUTT',
+  '.......UUUUUUUUU',
+  '.......UUUUUUUYU', // gold buttons
+  '.......UUUUUUUUU',
+  '.......UUUUUUUUU',
+  '........UUUUUUUU',
+  '.........uuu....', // trousers
+  '.........uuu....',
+  '.........uuu....',
+  '.........uuu....',
+  '.........uuu....',
+  '.........KKK....',
+  '........KKKK....',
+  '................',
+  '................'];
+const CEO_PAL = { H: '#6b4428', h: '#4e2f1a', Y: '#ffd34d', R: '#e74c3c', S: '#fbe6dc', s: '#efcfc4', K: '#2b1e2e', E: '#7a4a22', e: '#c08850',
+  W: '#ffffff', P: '#f5a6b8', m: '#c06a7a', U: '#22304a', u: '#1a2236', T: '#c0392b' };
+bundled.ceo = drawnSprite(CEO_HALF, CEO_PAL, []);
+RIG.ceo = { seatDrop: 0, head: 26, legs: 36, eyes: [[8, 15, 5, 6], [21, 15, 5, 6]], skin: '#fbe6dc', lash: '#2b1e2e' };
 // Claude: flat Clawd from the reference (wide body, side nubs, square eyes, four legs, white outline)
 bundled.claude = drawnSprite(['................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOKKOOOOOO', '....OOOOKKOOOOOO', '....OOOOKKOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '................', '................'], { O: '#d97757', K: '#1b1b2a', outline: '#ffffff' }, []);
 function pixelate(img, H = 44) {
@@ -512,51 +741,194 @@ function layout() {
   const cols = Math.max(3, Math.ceil(agents.size / ROWS));
   if (cols === COLS && off.width === W * 2) return;
   COLS = cols; W = 74 + COLS * SEAT_W + 96;
-  off.width = W * 2; off.height = H * 2; fit();
+  off.width = W * 2; off.height = H * 2; fit(); settle();
   for (const b of bodies.values()) if (b.mode === 'seat') b.path = []; // seats may not move, but stay safe
 }
 const seat = (i) => [74 + (i % COLS) * SEAT_W, 54 + Math.floor(i / COLS) * SEAT_H];
 const ceoX = () => W - 320; // CEO corner was designed at W = 320; shift it with the office
 
+// ---------- themes: every room colour comes from here ----------
+const THEMES = {
+  cafe: { floor: ['#8a4b2a', '#7a3f22'], pattern: 'check', wall: '#5a2e1c', line: '#4c2617', base: '#3a1d12', trim: '#c98b4a', wood: '#6b3b22',
+    sky: '#24325c', weather: 'stars', rug: ['#c9a64a', '#4f6b2f', '#5d7c37'], carpet: ['#d4a640', '#8e2b25'], glow: '255,170,80', dark: 0.5 },
+  cabin: { floor: ['#6b4a36', '#5d3f2d'], pattern: 'plank', wall: '#4a3426', line: '#3b281d', base: '#2a1c14', trim: '#d8c3a0', wood: '#5a3a26',
+    sky: '#2b3550', weather: 'snow', rug: ['#e8dcc8', '#9c2f2f', '#b33a3a'], carpet: ['#e8dcc8', '#3b5b8c'], glow: '255,140,60', dark: 0.5 },
+  sakura: { floor: ['#e3c4a0', '#d6b48e'], pattern: 'plank', wall: '#f3e2d0', line: '#e6cdb6', base: '#c9a07c', trim: '#a0704a', wood: '#b07f56',
+    sky: '#9fd3f0', weather: 'petals', rug: ['#e58aa6', '#f2b8c6', '#f7cdd8'], carpet: ['#a0704a', '#c96a8a'], glow: '255,215,190', dark: 0.22 },
+  matcha: { floor: ['#b8c48a', '#a9b67c'], pattern: 'tatami', wall: '#efe4c8', line: '#c9b98f', base: '#5b4630', trim: '#5b4630', wood: '#6e5438',
+    sky: '#f6c27a', weather: 'sunset', rug: ['#3f5a2e', '#556f3a', '#62803f'], carpet: ['#5b4630', '#7a2e2e'], glow: '255,200,140', dark: 0.3 },
+  starlight: { floor: ['#2f2a4a', '#29254a'], pattern: 'check', wall: '#3a2f5c', line: '#30264f', base: '#1f1838', trim: '#8f7ad8', wood: '#4a3d78',
+    sky: '#120f2a', weather: 'rain', rug: ['#e07ab0', '#4b3f8f', '#57499f'], carpet: ['#8f7ad8', '#2f8f9f'], glow: '255,120,200', dark: 0.55 },
+};
+let theme = THEMES[localStorage.getItem('theme')] ? localStorage.getItem('theme') : 'cafe';
+const TH = () => THEMES[theme];
+function weather(kind, x0, y0, w, h, t) { // little animated scene inside a window or the doorway
+  for (let i = 0; i < 7; i++) {
+    const sx = (i * 7 + 3) % w, sy = (i * 5) % h;
+    if (kind === 'stars') rect((t / 600 + i) % 3 < 1 ? '#fff' : '#9fb3ff', x0 + sx, y0 + 1 + sy % (h - 2), 1, 1);
+    else if (kind === 'snow') rect('#ffffff', x0 + (sx + Math.sin(t / 700 + i) * 2 + w) % w, y0 + (t / 60 + i * 9) % h, 1, 1);
+    else if (kind === 'petals') rect(i % 2 ? '#f7a8c0' : '#ffd1dc', x0 + (sx + t / 90) % w, y0 + (t / 80 + i * 7) % h, 1, 1);
+    else if (kind === 'rain') rect('#7f9fe8', x0 + (sx + t / 300) % w, y0 + (t / 25 + i * 11) % (h - 2), 1, 2);
+    else if (kind === 'sunset') { if (i === 0) { rect('#ffe08a', x0 + w - 9, y0 + h - 8, 5, 5); rect('#f39c6b', x0, y0 + h - 4, w, 4); } else if (i < 3) rect('#fff1d6', x0 + (sx + t / 400) % (w - 4), y0 + 2 + i * 3, 4, 1); }
+  }
+}
+// ---------- furniture: each theme has its own walls, windows, wall decor, corner set and plants ----------
+// The corner (x 0-48, y 44-92) and the three plant spots keep the same footprint, so pathfinding stays valid.
+const twinkle = (t, i, ms = 400) => (Math.floor(t / ms) + i) % 3; // cheap per-item blink phase
+function windowRow(T, t, xs, w, h, y = 5) { for (const wx of xs) { rect(T.trim, wx - 2, y - 2, w + 4, h + 4); rect(T.sky, wx, y, w, h); weather(T.weather, wx, y, w, h, t); } }
+function roundWindow(T, t, cx, cy, r) { // circle by rows
+  for (let dy = -r - 2; dy <= r + 2; dy++) { const hw = Math.round(Math.sqrt(Math.max(0, (r + 2) ** 2 - dy * dy))); rect(T.trim, cx - hw, cy + dy, hw * 2, 1); }
+  for (let dy = -r; dy <= r; dy++) { const hw = Math.round(Math.sqrt(r * r - dy * dy)); rect(T.sky, cx - hw, cy + dy, hw * 2, 1); }
+  weather(T.weather, cx - r + 3, cy - r + 3, r * 2 - 6, r * 2 - 6, t);
+  rect(T.trim, cx - r, cy, r * 2, 1); rect(T.trim, cx, cy - r, 1, r * 2);
+}
+const FURN = {
+  cafe: {
+    walls: (T) => { for (let x = 0; x < W; x += 16) rect(T.line, x, 0, 1, WALL); },
+    windows: (T, t) => { windowRow(T, t, [26, 96], 30, 21); for (const wx of [26, 96]) { rect(T.trim, wx + 14, 5, 2, 21); rect(T.trim, wx, 15, 30, 2); } },
+    decor: (T) => {
+      const bx = W - 116, books = ['#c0392b', '#2f4fb3', '#2fb39a', '#d4a640', '#8e44ad', '#e67e22'];
+      rect(T.base, bx, 13, 60, 2); rect(T.base, bx, 28, 60, 2);
+      for (let i = 0; i < 12; i++) { rect(books[i % 6], bx + 2 + i * 5, 5 + (i % 3), 4, 8 - (i % 3)); rect(books[(i + 3) % 6], bx + 2 + i * 5, 21 + (i % 2), 4, 7 - (i % 2)); }
+      rect('#f4e9d8', W - 36, 8, 14, 14); rect('#1b1b2a', W - 30, 10, 1, 6); rect('#1b1b2a', W - 30, 15, 5, 1); // clock
+    },
+    left: (T, t) => { // coffee counter
+      rect(T.wood, 4, 52, 40, 36); rect(T.trim, 2, 48, 44, 6); rect(T.base, 4, 86, 40, 3);
+      rect('#8d96a3', 10, 34, 14, 14); rect('#1b1b2a', 13, 37, 8, 4); rect('#c0392b', 20, 44, 2, 2);
+      rect('#f4f4f4', 30, 43, 5, 5); rect('#6b3b22', 31, 44, 3, 2);
+      for (let i = 0; i < 3; i++) rect('#ddd', 15 + i, 30 - ((t / 200 + i * 4) % 8), 1, 1);
+    },
+    plant: (px, py) => { rect('#a0522d', px, py + 10, 12, 10); rect('#3f7d3a', px - 2, py, 16, 11); rect('#5aa34f', px + 2, py - 4, 8, 8); },
+  },
+  cabin: {
+    walls: (T) => { for (let y = 3; y < WALL; y += 6) { rect(T.line, 0, y, W, 1); rect('#5c4230', 0, y + 1, W, 1); } }, // stacked logs
+    windows: (T, t) => { windowRow(T, t, [30, 100], 18, 16, 7); for (const wx of [30, 100]) { rect(T.trim, wx + 8, 7, 2, 16); rect(T.trim, wx, 14, 18, 2); rect('#ffffff', wx - 2, 23, 22, 2); } }, // snowy sills
+    decor: (T, t) => {
+      const fx = W - 112; // stone fireplace with a live fire
+      rect('#8a8078', fx, 2, 44, 32); for (let y = 4; y < 34; y += 5) for (let x = fx + ((y / 5) % 2) * 4; x < fx + 44; x += 8) rect('#6e655e', x, y, 7, 1);
+      rect('#5a3a26', fx - 3, 12, 50, 3); rect('#1c120d', fx + 10, 18, 24, 15);
+      for (let i = 0; i < 6; i++) { const h = 4 + ((Math.floor(t / 120) + i * 3) % 5); rect(i % 2 ? '#ffb347' : '#ff6b2c', fx + 12 + i * 3.5, 33 - h, 3, h); }
+      rect('#ffe08a', fx + 18, 29, 6, 3);
+      rect('#f4e9d8', fx + 4, 8, 2, 4); rect('#ffd34d', fx + 4, 7, 2, 1); rect('#f4e9d8', fx + 38, 8, 2, 4); rect('#ffd34d', fx + 38, 7, 2, 1); // candles
+      rect('#c9b28a', W - 40, 6, 3, 26); rect('#c9b28a', W - 34, 6, 3, 26); rect('#9c2f2f', W - 41, 4, 5, 3); rect('#9c2f2f', W - 35, 4, 5, 3); // skis
+    },
+    left: (T) => { // log pile + table of cocoa
+      for (let y = 0; y < 3; y++) for (let x = 0; x < 3 - y; x++) { const lx = 6 + x * 9 + y * 4, ly = 78 - y * 8; rect('#6b4a2a', lx, ly, 9, 8); rect('#c9a06a', lx + 2, ly + 2, 5, 4); rect('#8a6038', lx + 4, ly + 3, 1, 2); }
+      rect(T.trim, 2, 48, 44, 4); rect(T.wood, 6, 52, 3, 14); rect(T.wood, 39, 52, 3, 14);
+      for (const mx of [10, 22, 34]) { rect('#f4f4f4', mx, 43, 5, 5); rect('#7a4a22', mx + 1, 44, 3, 1); rect('#ffffff', mx + 1, 42, 3, 1); }
+    },
+    plant: (px, py) => { // little snowy pine
+      rect('#6b4a2a', px + 4, py + 14, 4, 6); rect('#a0522d', px + 1, py + 18, 10, 4);
+      for (let i = 0; i < 4; i++) rect('#2f5e3a', px + 6 - i * 2, py - 4 + i * 4, 1 + i * 4, 5);
+      for (const [dx, dy] of [[5, -3], [2, 5], [9, 9], [1, 12]]) rect('#ffffff', px + dx, py + dy, 2, 1);
+    },
+    lights: () => [[W - 90, 30, 70]],
+  },
+  sakura: {
+    walls: (T) => { rect(T.line, 0, 20, W, 11); for (let x = 0; x < W; x += 6) rect('#e8c8ae', x, 20, 1, 11); rect(T.trim, 0, 19, W, 1); }, // wainscot
+    windows: (T, t) => { windowRow(T, t, [16, 88], 40, 14, 3); for (const wx of [16, 88]) { rect(T.trim, wx + 19, 3, 2, 14); rect('#f7cdd8', wx - 2, 1, 44, 2); } }, // wide windows, pink pelmets
+    decor: (T) => {
+      const px = W - 114; // framed blossom painting
+      rect(T.trim, px, 2, 40, 16); rect('#fff5f0', px + 2, 4, 36, 12); rect('#6b4a3a', px + 4, 11, 30, 1); rect('#6b4a3a', px + 14, 8, 1, 4);
+      for (const [dx, dy] of [[6, 9], [12, 6], [18, 10], [24, 7], [30, 9], [15, 12]]) rect('#f2a0b8', px + dx, dy, 3, 2);
+      rect('#f7cdd8', W - 38, 5, 16, 12); rect('#ffffff', W - 36, 7, 12, 8); rect('#c96a8a', W - 31, 9, 1, 4); rect('#c96a8a', W - 31, 12, 3, 1); // pink clock
+    },
+    left: (T) => { // bakery case with cakes
+      rect(T.wood, 4, 60, 40, 28); rect(T.trim, 2, 58, 44, 3); rect(T.base, 4, 86, 40, 3);
+      g.globalAlpha = 0.45; rect('#cfeeff', 4, 42, 40, 16); g.globalAlpha = 1; rect('#ffffff', 4, 42, 40, 1); rect('#ffffff', 4, 42, 1, 16); rect('#ffffff', 43, 42, 1, 16);
+      for (const [cx, col] of [[7, '#f7cdd8'], [17, '#fff1d6'], [27, '#c96a8a'], [36, '#f2b8c6']]) { rect(col, cx, 51, 6, 6); rect('#ffffff', cx, 51, 6, 1); rect('#e74c3c', cx + 2, 49, 2, 2); }
+    },
+    plant: (px, py, t) => { // potted blossom tree
+      rect('#f4e9d8', px + 1, py + 14, 10, 6); rect('#6b4a3a', px + 5, py + 4, 2, 10);
+      rect('#f2a0b8', px - 3, py - 4, 18, 9); rect('#f7cdd8', px - 1, py - 6, 12, 4); rect('#ffd1dc', px + 2, py - 2, 4, 2);
+      rect('#f7a8c0', px + ((t / 60) % 16) - 2, py + 6 + ((t / 90) % 10), 1, 1);
+    },
+  },
+  matcha: {
+    walls: (T) => { for (let y = 8; y < WALL; y += 8) rect(T.line, 0, y, W, 1); for (let x = 0; x < W; x += 12) rect(T.line, x, 0, 1, WALL); for (let x = 0; x < W; x += 48) rect(T.base, x, 0, 3, WALL); }, // shoji + pillars
+    windows: (T, t) => { roundWindow(T, t, 40, 16, 11); roundWindow(T, t, 112, 16, 11); },
+    decor: (T, t) => {
+      const ax = W - 118; // tokonoma alcove: hanging scroll + ikebana
+      rect('#d8caa6', ax, 2, 50, 30); rect(T.base, ax, 2, 50, 2); rect(T.base, ax, 30, 50, 2);
+      rect('#f8f2e2', ax + 8, 5, 12, 22); rect('#3a2a1a', ax + 8, 5, 12, 1); rect('#3a2a1a', ax + 13, 9, 2, 8); rect('#3a2a1a', ax + 11, 13, 6, 1); rect('#3a2a1a', ax + 12, 20, 4, 1);
+      rect('#6e5438', ax + 34, 24, 8, 6); rect('#3f5a2e', ax + 37, 14, 1, 10); rect('#c0392b', ax + 34, 12, 3, 3); rect('#f2a0b8', ax + 39, 15, 3, 3);
+      const lx = W - 32, glow = twinkle(t, 0, 700) ? '#ffcf8a' : '#ffbf6a'; // paper lantern
+      rect('#3a2a1a', lx + 4, 0, 1, 6); rect(glow, lx, 6, 10, 14); for (let y = 8; y < 20; y += 3) rect('#e0904a', lx, y, 10, 1); rect('#3a2a1a', lx + 1, 5, 8, 1); rect('#3a2a1a', lx + 1, 20, 8, 1);
+    },
+    left: (T, t) => { // low tea table, cushions, teapot
+      rect('#c0392b', 4, 74, 12, 10); rect('#c0392b', 32, 74, 12, 10); rect('#8e2b25', 4, 83, 12, 1); rect('#8e2b25', 32, 83, 12, 1);
+      rect(T.wood, 8, 58, 32, 4); rect(T.base, 10, 62, 2, 8); rect(T.base, 36, 62, 2, 8);
+      rect('#4a5a2e', 18, 52, 10, 6); rect('#4a5a2e', 27, 54, 3, 2); rect('#3a4824', 20, 51, 6, 1); rect('#f4f4f4', 12, 55, 3, 3); rect('#7fae4a', 12, 55, 3, 1); rect('#f4f4f4', 33, 55, 3, 3);
+      for (let i = 0; i < 2; i++) rect('#eeeeee', 22 + i, 48 - ((t / 220 + i * 4) % 7), 1, 1);
+    },
+    plant: (px, py) => { // bonsai
+      rect('#5b4630', px, py + 15, 12, 4); rect('#6e5438', px + 5, py + 6, 2, 9); rect('#6e5438', px + 3, py + 8, 3, 1);
+      rect('#3f5a2e', px - 1, py + 3, 8, 4); rect('#4f6f38', px + 5, py, 9, 4); rect('#3f5a2e', px + 1, py - 2, 6, 3);
+    },
+  },
+  starlight: {
+    walls: (T) => { for (let y = 0; y < WALL; y += 5) { rect(T.line, 0, y, W, 1); for (let x = (y / 5) % 2 ? 0 : 6; x < W; x += 12) rect(T.line, x, y, 1, 5); } }, // brick
+    windows: (T, t) => { // tall arched window, neon frame
+      for (const wx of [24, 96]) {
+        rect(T.trim, wx - 2, 6, 30, 24); for (let dy = 0; dy < 6; dy++) { const hw = Math.round(Math.sqrt(36 - (6 - dy) ** 2) * 2.5); rect(T.trim, wx + 13 - hw, 1 + dy, hw * 2, 1); }
+        rect(T.sky, wx, 8, 26, 20); for (let dy = 1; dy < 6; dy++) { const hw = Math.round(Math.sqrt(36 - (6 - dy) ** 2) * 2.2); rect(T.sky, wx + 13 - hw, 2 + dy, hw * 2, 1); }
+        weather(T.weather, wx, 4, 26, 24, t); rect(T.trim, wx + 12, 4, 2, 24);
+      }
+    },
+    decor: (T, t) => {
+      for (let x = 4; x < W; x += 7) rect(['#ff7ab0', '#7fe0ff', '#ffd34d', '#b48cff'][(x / 7 + twinkle(t, x)) % 4 | 0], x, 1 + (x % 14 < 7 ? 1 : 0), 2, 2); // string lights
+      const rx = W - 116; rect(T.base, rx, 26, 56, 3); // record shelf
+      for (let i = 0; i < 6; i++) { rect('#111018', rx + 2 + i * 9, 14, 8, 12); rect(['#ff7ab0', '#7fe0ff', '#ffd34d'][i % 3], rx + 5 + i * 9, 18, 2, 3); }
+      const on = (t / 500) % 6 > 0.4; g.globalAlpha = on ? 1 : 0.5; // neon heart
+      for (const [dx, dy, w] of [[1, 0, 3], [6, 0, 3], [0, 1, 10], [0, 2, 10], [1, 3, 8], [2, 4, 6], [3, 5, 4], [4, 6, 2]]) rect('#ff5fa2', W - 36 + dx, 8 + dy * 2, w, 2);
+      g.globalAlpha = 1;
+    },
+    left: (T, t) => { // arcade cabinet + beanbag
+      rect('#2b2550', 6, 30, 18, 58); rect('#8f7ad8', 6, 30, 18, 3); rect('#111018', 9, 36, 12, 12);
+      rect(['#ff7ab0', '#7fe0ff', '#6fe08a'][twinkle(t, 0, 300)], 11, 38 + (Math.floor(t / 150) % 8), 3, 2); rect('#ffd34d', 15, 44 - (Math.floor(t / 200) % 6), 2, 2);
+      rect('#4b3f8f', 8, 52, 14, 6); rect('#ff5fa2', 11, 53, 2, 2); rect('#7fe0ff', 16, 54, 2, 2);
+      rect('#e07ab0', 28, 72, 16, 14); rect('#f29ac6', 30, 70, 12, 4); rect('#b85a8a', 28, 85, 16, 1); // beanbag
+    },
+    plant: (px, py, t) => { // cactus with fairy lights
+      rect('#4b3f8f', px + 1, py + 14, 10, 6); rect('#3f8f5a', px + 4, py, 4, 14); rect('#3f8f5a', px + 1, py + 4, 3, 2); rect('#3f8f5a', px + 1, py + 2, 2, 3); rect('#3f8f5a', px + 8, py + 6, 3, 2); rect('#3f8f5a', px + 9, py + 3, 2, 4);
+      for (let i = 0; i < 4; i++) rect(twinkle(t, i) ? '#ffd34d' : '#7a6a3a', px + 2 + i * 3, py + 3 + (i % 2) * 6, 1, 1);
+    },
+    lights: () => [[W - 30, 14, 40]],
+  },
+};
 // ---------- room ----------
 function room(t) {
-  for (let y = WALL; y < H; y += 10) for (let x = 0; x < W; x += 10) rect(((x + y) / 10) % 2 ? '#7a3f22' : '#8a4b2a', x, y, 10, 10);
-  rect('#5a2e1c', 0, 0, W, WALL);
-  for (let x = 0; x < W; x += 16) rect('#4c2617', x, 0, 1, WALL);
-  rect('#3a1d12', 0, WALL - 3, W, 4);
-  for (const wx of [26, 96]) { // night windows
-    rect('#c98b4a', wx - 2, 3, 34, 25); rect('#24325c', wx, 5, 30, 21); rect('#c98b4a', wx + 14, 5, 2, 21); rect('#c98b4a', wx, 15, 30, 2);
-    for (let i = 0; i < 5; i++) rect((t / 600 + i) % 3 < 1 ? '#fff' : '#9fb3ff', wx + (i * 7 + 3) % 28, 6 + (i * 5) % 18, 1, 1);
+  const T = TH();
+  if (T.pattern === 'check') for (let y = WALL; y < H; y += 10) for (let x = 0; x < W; x += 10) rect(((x + y) / 10) % 2 ? T.floor[1] : T.floor[0], x, y, 10, 10);
+  else if (T.pattern === 'plank') for (let y = WALL; y < H; y += 6) { rect(T.floor[(y / 6) % 2 | 0], 0, y, W, 6); for (let x = ((y / 6) % 3) * 13; x < W; x += 40) rect(T.floor[1], x, y, 1, 6); rect(T.floor[1], 0, y + 5, W, 1); }
+  else for (let y = WALL; y < H; y += 20) for (let x = 0; x < W; x += 40) { // tatami mats with dark borders
+    const o = (y / 20) % 2 ? 20 : 0; rect(T.floor[0], x - o, y, 40, 20); rect(T.floor[1], x - o + 2, y + 2, 36, 16); rect('#4a5a2e', x - o, y, 40, 1); rect('#4a5a2e', x - o, y, 1, 20);
   }
+  const F = FURN[theme];
+  rect(T.wall, 0, 0, W, WALL);
+  F.walls(T, t);
+  rect(T.base, 0, WALL - 3, W, 4);
+  F.windows(T, t);
   // the door agents leave by
-  rect('#c98b4a', DOOR_X - 2, 6, 20, 28); rect('#3a1d12', DOOR_X, 8, 16, 26);
-  if (doorOpen > 0.02) { // doorway: night outside, a strip of moonlit floor, then the panel swinging in on its left hinge
-    rect('#141b33', DOOR_X + 1, 9, 14, 25); rect('#24325c', DOOR_X + 1, 28, 14, 6);
-    for (let i = 0; i < 3; i++) rect('#9fb3ff', DOOR_X + 3 + i * 4, 12 + (i * 5) % 9, 1, 1);
-    g.globalAlpha = 0.25 * doorOpen; rect('#9fb3ff', DOOR_X - 2, 34, 20, 8); g.globalAlpha = 1; // cool light spills in
+  rect(T.trim, DOOR_X - 2, 6, 20, 28); rect(T.base, DOOR_X, 8, 16, 26);
+  if (doorOpen > 0.02) { // doorway: the theme's sky and weather, then the panel swinging in on its left hinge
+    rect(T.sky, DOOR_X + 1, 9, 14, 25); weather(T.weather, DOOR_X + 1, 9, 14, 19, t); rect(T.base, DOOR_X + 1, 28, 14, 6);
+    g.globalAlpha = 0.25 * doorOpen; rect('#9fb3ff', DOOR_X - 2, 34, 20, 8); g.globalAlpha = 1;
   }
-  const pw = Math.max(2, Math.round(14 * (1 - 0.8 * doorOpen))); // panel foreshortens as it opens
-  rect('#6b3b22', DOOR_X + 1, 9, pw, 25); rect('#8a4f2c', DOOR_X + 1, 9, 1, 25);
-  if (pw > 6) { rect('#4c2617', DOOR_X + 3, 11, pw - 4, 8); rect('#4c2617', DOOR_X + 3, 22, pw - 4, 9); }
+  const pw = Math.max(2, Math.round(14 * (1 - 0.8 * doorOpen)));
+  rect(T.wood, DOOR_X + 1, 9, pw, 25); rect(T.trim, DOOR_X + 1, 9, 1, 25);
+  if (pw > 6) { rect(T.base, DOOR_X + 3, 11, pw - 4, 8); rect(T.base, DOOR_X + 3, 22, pw - 4, 9); }
   rect('#ffd34d', DOOR_X + Math.max(2, pw - 2), 21, 2, 2); // knob
   rect('#2fb39a', DOOR_X + 2, 1, 12, 4); // EXIT sign
-  rect('#d4a640', W / 2 - 26, 5, 52, 18); rect('#a8322d', W / 2 - 24, 7, 48, 14); // sign
-  const bx = W - 116;
-  rect('#3a1d12', bx, 13, 60, 2); rect('#3a1d12', bx, 28, 60, 2); // shelves
-  const books = ['#c0392b', '#2f4fb3', '#2fb39a', '#d4a640', '#8e44ad', '#e67e22'];
-  for (let i = 0; i < 12; i++) { rect(books[i % 6], bx + 2 + i * 5, 5 + (i % 3), 4, 8 - (i % 3)); rect(books[(i + 3) % 6], bx + 2 + i * 5, 21 + (i % 2), 4, 7 - (i % 2)); }
-  rect('#f4e9d8', W - 36, 8, 14, 14); rect('#1b1b2a', W - 30, 10, 1, 6); rect('#1b1b2a', W - 30, 15, 5, 1); // clock
-  // cafe counter + coffee machine (left)
-  rect('#6b3b22', 4, 52, 40, 36); rect('#c98b4a', 2, 48, 44, 6); rect('#4c2617', 4, 86, 40, 3);
-  rect('#8d96a3', 10, 34, 14, 14); rect('#1b1b2a', 13, 37, 8, 4); rect('#c0392b', 20, 44, 2, 2);
-  rect('#f4f4f4', 30, 43, 5, 5); rect('#6b3b22', 31, 44, 3, 2);
-  for (let i = 0; i < 3; i++) rect('#ddd', 15 + i, 30 - ((t / 200 + i * 4) % 8), 1, 1); // steam
-  for (const [px, py] of [[4, 150], [W - 20, 150], [W - 20, 40]]) { rect('#a0522d', px, py + 10, 12, 10); rect('#3f7d3a', px - 2, py, 16, 11); rect('#5aa34f', px + 2, py - 4, 8, 8); }
+  rect('#d4a640', W / 2 - 26, 5, 52, 18); rect('#a8322d', W / 2 - 24, 7, 48, 14); // name sign
+  F.decor(T, t);                                   // wall furniture on the right
+  F.left(T, t);                                    // the corner by the door (same footprint in every theme)
+  for (const [px, py] of [[4, 150], [W - 20, 150], [W - 20, 40]]) F.plant(px, py, t);
   // rug under the team
   const rw = COLS * SEAT_W + 14;
-  rect('#c9a64a', 56, 42, rw, 136); rect('#4f6b2f', 58, 44, rw - 4, 132); rect('#5d7c37', 62, 48, rw - 12, 124);
+  rect(T.rug[0], 56, 42, rw, 136); rect(T.rug[1], 58, 44, rw - 4, 132); rect(T.rug[2], 62, 48, rw - 12, 124);
   // CEO corner: red carpet
-  rect('#d4a640', ceoX() + 228, 72, 84, 66); rect('#8e2b25', ceoX() + 230, 74, 80, 62);
+  rect(T.carpet[0], ceoX() + 228, 72, 84, 66); rect(T.carpet[1], ceoX() + 230, 74, 80, 62);
 }
 
 // ---------- agents: status (from events) ----------
@@ -700,7 +1072,7 @@ function updateBody(f, a, i, now, dt) {
   }
   return b;
 }
-const where = (b) => b.mode === 'away' ? 'out of office' : b.mode === 'walk' ? ({ ceo: 'handing in', door: 'heading out', seat: 'walking back' }[b.dest]) : null;
+const where = (b) => b.mode === 'away' ? 'away' : b.mode === 'walk' ? b.dest : null; // key into LANGS[..].where
 
 // ---------- drawing (everything depth-sorted by its base line, so desks hide anyone behind them) ----------
 const HAND = { claude: '#d97757', robot: '#9aa4b1' };
@@ -767,7 +1139,7 @@ function drawWalker(f, b, t) {
 function drawCeoBack(t) {
   const X = ceoX();
   rect('#d4a640', X + 264, 70, 20, 26); rect('#8e2b25', X + 266, 72, 16, 22); // chair back
-  sprite(SPRITES.ceo, X + 268, 82 + (Math.floor(t / 900) % 2), 'ceo');
+  sprite(SPRITES.ceo, X + 268, 82 + (Math.floor(t / 900) % 2), 'ceo', { drop: RIG.ceo?.seatDrop, eyesClosed: t % 4200 < 140 });
 }
 function drawCeoDesk() {
   const X = ceoX();
@@ -779,12 +1151,12 @@ function drawCeoDesk() {
 
 function light() {
   g.globalCompositeOperation = 'lighter';
-  for (const [x, y, r] of [[24, 44, 40], [ceoX() + 292, 92, 46], [W / 2, 14, 60]]) {
-    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,170,80,.22)'); gr.addColorStop(1, 'rgba(255,170,80,0)');
+  for (const [x, y, r] of [[24, 44, 40], [ceoX() + 292, 92, 46], [W / 2, 14, 60], ...(FURN[theme].lights?.() || [])]) {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(' + TH().glow + ',.22)'); gr.addColorStop(1, 'rgba(' + TH().glow + ',0)');
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   }
   g.globalCompositeOperation = 'source-over';
-  const v = g.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, Math.max(200, W * 0.6)); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.5)');
+  const v = g.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, Math.max(200, W * 0.6)); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,' + TH().dark + ')');
   g.fillStyle = v; g.fillRect(0, 0, W, H);
 }
 
@@ -808,6 +1180,7 @@ const COLORS = { working: '#5ad1ff', thinking: '#b48cff', waiting: '#ffd34d', er
 let lastT = 0, doorOpen = 0;
 function frame(t) {
   const now = Date.now(), dt = Math.min(0.1, (t - lastT) / 1000 || 0); lastT = t;
+  stepView(dt);
   layout();
   // door opens while anyone walks near it, then swings shut
   const near = [...bodies.values()].some((b) => b.mode === 'walk' && Math.hypot(b.x - DOOR_SPOT[0], b.y - DOOR_SPOT[1]) < 22);
@@ -827,16 +1200,16 @@ function frame(t) {
   light();
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(off, 0, 0, W * S, H * S);
-  text('AI OFFICE', W / 2, 17, '#ffe9a8', 4);
+  text(tr('title'), W / 2, 17, '#ffe9a8', 4);
   for (const [f, a, sx, sy, st, b] of labels) {
     const w = where(b);
-    text((SPRITES[f]?.name || f.toUpperCase()), sx + 6, sy + 30, w === 'out of office' ? '#888' : '#fff');
-    text(w || st, sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
+    text((SPRITES[f]?.name || f.toUpperCase()), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff');
+    text(w ? L().where[w] : L().st[st] || st, sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
     if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 8);
   }
   const cx = ceoX() + 274;
-  text('CEO (you)', cx, 122, '#ffe9a8');
-  text(`${total} routed · ${papers} handed in`, cx, 128, '#ddd', 2.4);
+  text(tr('ceo'), cx, 122, '#ffe9a8');
+  text(tr('stats', total, papers), cx, 128, '#ddd', 2.4);
   if (lastOrder) bubble('→ ' + (SPRITES[lastOrder.f]?.name || lastOrder.f) + ': ' + lastOrder.text, cx, 66);
   requestAnimationFrame(frame);
 }
@@ -848,22 +1221,22 @@ function renderRoster() {
   const now = Date.now(), work = [], rest = [];
   for (const [f, a] of agents) {
     const st = shown(a, now), b = bodies.get(f), w = b && where(b);
-    (ACTIVE.has(st) ? work : rest).push({ name: SPRITES[f]?.name || f, st: w || st, detail: ACTIVE.has(st) ? a.detail : '' });
+    (ACTIVE.has(st) ? work : rest).push({ name: SPRITES[f]?.name || f, st: w || st, label: w ? L().where[w] : L().st[st] || st, detail: ACTIVE.has(st) ? a.detail : '' });
   }
   roster.textContent = '';
-  for (const [title, list] of [[`Working (${work.length})`, work], [`Resting (${rest.length})`, rest]]) {
+  for (const [title, list] of [[tr('workingN', work.length), work], [tr('restingN', rest.length), rest]]) {
     const h = document.createElement('h4'); h.textContent = title; roster.append(h);
-    if (!list.length) { const p = document.createElement('p'); p.className = 'none'; p.textContent = 'Nobody'; roster.append(p); }
+    if (!list.length) { const p = document.createElement('p'); p.className = 'none'; p.textContent = tr('nobody'); roster.append(p); }
     for (const it of list) {
       const row = document.createElement('div'); row.className = 'who';
       const dot = document.createElement('i'); dot.style.background = COLORS[it.st] || '#e0c080';
       const n = document.createElement('b'); n.textContent = it.name;
-      const s = document.createElement('span'); s.textContent = it.st + (it.detail ? ' · ' + it.detail : '');
+      const s = document.createElement('span'); s.textContent = it.label + (it.detail ? ' · ' + it.detail : '');
       row.append(dot, n, s); roster.append(row);
     }
   }
 }
-teamBtn.onclick = () => { roster.hidden = !roster.hidden; teamBtn.setAttribute('aria-expanded', String(!roster.hidden)); if (!roster.hidden) renderRoster(); };
+teamBtn.onclick = () => { document.getElementById('langMenu').hidden = true; document.getElementById('themeMenu').hidden = true; roster.hidden = !roster.hidden; teamBtn.setAttribute('aria-expanded', String(!roster.hidden)); if (!roster.hidden) renderRoster(); };
 setInterval(() => { if (!roster.hidden) renderRoster(); }, 500);
 
 // ---------- custom sprites (PNG upload, kept in localStorage) ----------
@@ -873,23 +1246,23 @@ function loadCustom(k) {
   const im = new Image(); im.onload = () => { custom[k] = im; }; im.src = d;
 }
 async function upload(k, file) {
-  if (!file || !/^image\/png$/.test(file.type)) { alert('Please choose a PNG file.'); return; }
+  if (!file || !/^image\/png$/.test(file.type)) { alert(tr('pngOnly')); return; }
   const bmp = await createImageBitmap(file);
   const r = Math.min(1, 96 / bmp.width, 128 / bmp.height); // shrink big images so they fit in localStorage
   const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * r)); c.height = Math.max(1, Math.round(bmp.height * r));
   const cx = c.getContext('2d'); cx.imageSmoothingEnabled = false; cx.drawImage(bmp, 0, 0, c.width, c.height);
-  try { localStorage.setItem('sprite:' + k, c.toDataURL('image/png')); } catch { alert('Could not save: browser storage is full.'); return; }
+  try { localStorage.setItem('sprite:' + k, c.toDataURL('image/png')); } catch { alert(tr('full')); return; }
   loadCustom(k); renderList();
 }
 function renderList() {
   const list = document.getElementById('list'); list.textContent = '';
   for (const k of [...agents.keys(), 'ceo']) {
     const row = document.createElement('div'); row.className = 'row';
-    const name = document.createElement('b'); name.textContent = SPRITES[k]?.name || k;
+    const name = document.createElement('b'); name.textContent = k === 'ceo' ? tr('ceo') : SPRITES[k]?.name || k;
     const img = document.createElement('img'); img.alt = ''; const d = localStorage.getItem('sprite:' + k); if (d) img.src = d; else img.style.visibility = 'hidden';
-    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png'; inp.setAttribute('aria-label', `Sprite for ${name.textContent}`);
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png'; inp.setAttribute('aria-label', tr('spriteFor', name.textContent));
     inp.onchange = () => upload(k, inp.files[0]);
-    const reset = document.createElement('button'); reset.type = 'button'; reset.textContent = 'Reset';
+    const reset = document.createElement('button'); reset.type = 'button'; reset.textContent = tr('reset');
     reset.onclick = () => { localStorage.removeItem('sprite:' + k); loadCustom(k); renderList(); };
     row.append(name, img, inp, reset); list.append(row);
   }
@@ -899,8 +1272,87 @@ document.getElementById('gear').onclick = () => { renderList(); document.getElem
 
 // ---------- live data ----------
 const conn = document.getElementById('conn');
+let connKey = 'connecting';
+function setConn(k) { connKey = k; conn.textContent = tr(k); }
+setConn('connecting');
+
+// ---------- language drop-down (pixel globe icon) ----------
+const GLOBE = ['...KKKKKK...', '..KBBCCBBK..', '.KBCCCBBBBK.', 'KBBCCBBBCCBK', 'KBBBCBBCCCBK', 'KBBBBBBCCBBK',
+  'KCCBBBBBCBBK', 'KCCCBBBBBBBK', '.KCCBBBCBBK.', '..KBBBCCBK..', '...KKKKKK...'];
+{ const c = document.createElement('canvas'); c.width = 12; c.height = 11; const x = c.getContext('2d'), pal = { K: '#1b1b2a', B: '#3f86e8', C: '#5aa34f' };
+  GLOBE.forEach((row, j) => [...row].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, j, 1, 1); } }));
+  document.getElementById('globe').src = c.toDataURL(); }
+const langBtn = document.getElementById('langBtn'), langMenu = document.getElementById('langMenu');
+function applyLang() {
+  document.documentElement.lang = lang;
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-label]')) el.setAttribute('aria-label', tr(el.dataset.i18nLabel));
+  document.getElementById('langName').textContent = L().name;
+  langBtn.setAttribute('aria-label', tr('language') + ': ' + L().name);
+  setConn(connKey);
+  langMenu.textContent = '';
+  for (const [k, v] of Object.entries(LANGS)) {
+    const li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(k === lang)); b.lang = k; b.textContent = v.name;
+    b.onclick = () => { lang = k; localStorage.setItem('lang', k); closeLang(); applyLang(); applyTheme(); placeStatus(); if (!roster.hidden) renderRoster(); if (document.getElementById('dlg').open) renderList(); langBtn.focus(); };
+    li.append(b); langMenu.append(li);
+  }
+}
+// theme picker: pixel lamp icon, swatch per theme
+const LAMP = ['....YYYY....', '...YYYYYY...', '..YYYYYYYY..', '..OOOOOOOO..', '.....KK.....', '.....KK.....', '.....KK.....', '.....KK.....', '...KKKKKK...', '..KKKKKKKK..'];
+{ const c = document.createElement('canvas'); c.width = 12; c.height = 10; const x = c.getContext('2d'), pal = { Y: '#ffd34d', O: '#e08a2c', K: '#5a3a26' };
+  LAMP.forEach((row, j) => [...row].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, j, 1, 1); } }));
+  document.getElementById('lampIcon').src = c.toDataURL(); }
+const themeBtn = document.getElementById('themeBtn'), themeMenu = document.getElementById('themeMenu');
+function closeTheme() { themeMenu.hidden = true; themeBtn.setAttribute('aria-expanded', 'false'); }
+function applyTheme() {
+  document.getElementById('themeName').textContent = L().themes?.[theme] || LANGS.en.themes[theme];
+  themeBtn.setAttribute('aria-label', tr('theme') + ': ' + document.getElementById('themeName').textContent);
+  themeMenu.textContent = '';
+  for (const k of Object.keys(THEMES)) {
+    const li = document.createElement('li'), b = document.createElement('button'), sw = document.createElement('i');
+    sw.style.background = 'linear-gradient(135deg,' + THEMES[k].wall + ' 50%,' + THEMES[k].rug[1] + ' 50%)';
+    b.type = 'button'; b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(k === theme));
+    b.append(sw, L().themes?.[k] || LANGS.en.themes[k]);
+    b.onclick = () => { theme = k; localStorage.setItem('theme', k); closeTheme(); applyTheme(); themeBtn.focus(); };
+    li.append(b); themeMenu.append(li);
+  }
+}
+themeBtn.onclick = () => {
+  const open = themeMenu.hidden; themeMenu.hidden = !open; themeBtn.setAttribute('aria-expanded', String(open));
+  if (open) { closeLang(); roster.hidden = true; teamBtn.setAttribute('aria-expanded', 'false'); themeMenu.querySelector('[aria-checked="true"]')?.focus(); }
+};
+themeMenu.addEventListener('keydown', (e) => {
+  const items = [...themeMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { closeTheme(); themeBtn.focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); }
+});
+document.addEventListener('click', (e) => { if (!themeMenu.hidden && !themeMenu.contains(e.target) && !themeBtn.contains(e.target)) closeTheme(); });
+// Retro UI switch: pixel-styled toolbar and panels; the office scene itself is pixel either way
+const retroBtn = document.getElementById('retroBtn');
+function setRetro(on) { document.body.classList.toggle('retro', on); retroBtn.setAttribute('aria-pressed', String(on)); localStorage.setItem('retroUI', on ? '1' : '0'); placeStatus(); }
+// keep the live status between the zoom control and the toolbar, whatever their size (retro buttons are wider)
+function placeStatus() {
+  const bar = document.getElementById('bar'), z = document.getElementById('zoom').getBoundingClientRect(), tl = document.getElementById('tools').getBoundingClientRect();
+  bar.style.paddingLeft = Math.round(z.right + 14) + 'px'; bar.style.paddingRight = Math.round(innerWidth - tl.left + 8) + 'px';
+}
+addEventListener('resize', placeStatus);
+retroBtn.onclick = () => setRetro(!document.body.classList.contains('retro'));
+setRetro(localStorage.getItem('retroUI') === '1');
+function closeLang() { langMenu.hidden = true; langBtn.setAttribute('aria-expanded', 'false'); }
+langBtn.onclick = () => {
+  const open = langMenu.hidden; langMenu.hidden = !open; langBtn.setAttribute('aria-expanded', String(open));
+  if (open) { closeTheme(); roster.hidden = true; teamBtn.setAttribute('aria-expanded', 'false'); langMenu.querySelector('[aria-checked="true"]')?.focus(); }
+};
+langMenu.addEventListener('keydown', (e) => {
+  const items = [...langMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { closeLang(); langBtn.focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); }
+});
+document.addEventListener('click', (e) => { if (!langMenu.hidden && !langMenu.contains(e.target) && !langBtn.contains(e.target)) closeLang(); });
+applyLang(); applyTheme(); placeStatus();
 if (new URLSearchParams(location.search).has('demo')) {
-  conn.textContent = 'demo';
+  setConn('demo');
   const tasks = ['Refactor auth module', 'Summarise PDF', 'Write unit tests', 'Translate docs to FR', 'Fix CSS overflow', 'Plan Q3 roadmap', 'Explain regex'];
   const fams = [...FIXED, 'qwen'];
   setInterval(() => {
@@ -910,8 +1362,8 @@ if (new URLSearchParams(location.search).has('demo')) {
   }, 1400);
 } else {
   const es = new EventSource('/events');
-  es.onopen = () => { conn.textContent = 'live'; };
-  es.onerror = () => { conn.textContent = 'reconnecting…'; };
+  es.onopen = () => setConn('live');
+  es.onerror = () => setConn('reconnecting');
   es.addEventListener('reset', () => { bodies.clear(); line.length = 0; for (const f of [...agents.keys()]) FIXED.includes(f) ? agents.set(f, { state: 'idle', detail: '', at: 0 }) : agents.delete(f); total = 0; lastOrder = null; });
   es.addEventListener('replay', (m) => { try { JSON.parse(m.data).forEach(apply); } catch {} });
   es.addEventListener('agent-event', (m) => { try { apply(JSON.parse(m.data)); } catch {} });
