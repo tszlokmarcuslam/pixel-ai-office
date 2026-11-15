@@ -24,10 +24,10 @@ You need [Claude Code](https://claude.com/claude-code) and [Node.js](https://nod
 1. In Claude Code, add this repository as a plugin marketplace:
 
    ```
-   /plugin marketplace add damoninator/AGENT_VISUALISATION
+   /plugin marketplace add tszlokmarcuslam/pixel-ai-office
    ```
 
-   Until the plugin is on `main`, use a local copy instead: clone the repo, check out the `Cute-Agents-Dashboard` branch, and run `/plugin marketplace add <path to the clone>`.
+   The repository is private, so Claude Code needs to be signed in to a GitHub account that can see it (the same way `git clone` would). If that isn't set up, clone it and add the folder instead: `/plugin marketplace add <path to the clone>`.
 
 2. Install the plugin:
 
@@ -49,7 +49,13 @@ To look around without any traffic, open http://localhost:4317/office?demo=1.
 
 ## Run it without the plugin
 
-From a clone of this repository:
+Clone the repository:
+
+```bash
+git clone https://github.com/tszlokmarcuslam/pixel-ai-office.git
+```
+
+Then, from its folder, run these two commands, each in its own terminal:
 
 ```bash
 node agentboard/server.mjs
