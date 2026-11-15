@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 32 32" shape-rendering="crispEdges" role="img" aria-label="Pixel AI Office: a cozy robot in a scarf holding a warm mug">
+  <!-- Plugin icon on a 32x32 pixel grid; palette matches app/icon.svg. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbe3cc"/>
+      <stop offset="1" stop-color="#f2b896"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)" shape-rendering="geometricPrecision"/>
+
+  <!-- sparkles -->
+  <g fill="#ffffff">
+    <rect x="4" y="6" width="3" height="1"/><rect x="5" y="5" width="1" height="3"/>
+    <rect x="26" y="5" width="3" height="1"/><rect x="27" y="4" width="1" height="3"/>
+    <rect x="4" y="16" width="1" height="1"/>
+  </g>
+
+  <!-- floor shadow -->
+  <ellipse cx="17" cy="27.6" rx="11" ry="1.2" fill="#bd5835" fill-opacity="0.28" shape-rendering="geometricPrecision"/>
+
+  <!-- antenna -->
+  <rect x="15" y="6" width="2" height="2" fill="#245a56"/>
+  <rect x="15" y="2" width="2" height="4" fill="#de7d59"/>
+  <rect x="14" y="3" width="4" height="2" fill="#de7d59"/>
+  <rect x="15" y="3" width="1" height="1" fill="#ffd9c4"/>
+
+  <!-- head -->
+  <rect x="9" y="8" width="14" height="11" fill="#2f6f6a"/>
+  <rect x="8" y="9" width="16" height="9" fill="#2f6f6a"/>
+  <rect x="9" y="8" width="14" height="1" fill="#3f8a83"/>
+  <rect x="7" y="11" width="1" height="3" fill="#de7d59"/>
+  <rect x="24" y="11" width="1" height="3" fill="#de7d59"/>
+
+  <!-- face screen: happy closed eyes, blush, smile -->
+  <rect x="10" y="10" width="12" height="7" fill="#183836"/>
+  <g fill="#ffe9c9">
+    <rect x="12" y="13" width="1" height="1"/><rect x="13" y="12" width="1" height="1"/><rect x="14" y="13" width="1" height="1"/>
+    <rect x="17" y="13" width="1" height="1"/><rect x="18" y="12" width="1" height="1"/><rect x="19" y="13" width="1" height="1"/>
+    <rect x="15" y="15" width="2" height="1"/>
+  </g>
+  <rect x="11" y="14" width="1" height="1" fill="#f2907a"/>
+  <rect x="20" y="14" width="1" height="1" fill="#f2907a"/>
+
+  <!-- body -->
+  <rect x="10" y="19" width="12" height="8" fill="#3f8a83"/>
+  <rect x="9" y="20" width="14" height="6" fill="#3f8a83"/>
+
+  <!-- knit scarf -->
+  <rect x="9" y="19" width="14" height="2" fill="#de7d59"/>
+  <g fill="#fbeedc"><rect x="11" y="19" width="1" height="1"/><rect x="14" y="20" width="1" height="1"/><rect x="17" y="19" width="1" height="1"/><rect x="20" y="20" width="1" height="1"/></g>
+  <rect x="11" y="21" width="2" height="3" fill="#de7d59"/>
+  <rect x="11" y="24" width="2" height="1" fill="#bd5835"/>
+
+  <!-- mug with heart, held in a little hand -->
+  <rect x="21" y="21" width="6" height="6" fill="#fbeedc"/>
+  <rect x="22" y="21" width="4" height="1" fill="#6b4430"/>
+  <rect x="27" y="22" width="2" height="1" fill="#fbeedc"/>
+  <rect x="28" y="23" width="1" height="2" fill="#fbeedc"/>
+  <rect x="27" y="25" width="2" height="1" fill="#fbeedc"/>
+  <g fill="#de7d59">
+    <rect x="23" y="23" width="1" height="1"/><rect x="25" y="23" width="1" height="1"/>
+    <rect x="23" y="24" width="3" height="1"/><rect x="24" y="25" width="1" height="1"/>
+  </g>
+  <rect x="20" y="23" width="1" height="2" fill="#245a56"/>
+
+  <!-- steam -->
+  <g fill="#ffffff" fill-opacity="0.9">
+    <rect x="24" y="19" width="1" height="1"/><rect x="25" y="18" width="1" height="1"/>
+    <rect x="24" y="17" width="1" height="1"/><rect x="25" y="16" width="1" height="1"/>
+  </g>
+</svg>
