@@ -15,14 +15,17 @@ canvas{display:block;margin:0 auto;image-rendering:pixelated}
 #langMenu,#themeMenu,#roster{position:fixed;top:40px;right:10px;z-index:3;margin:0;list-style:none}
 #langMenu button,#themeMenu button{display:block;width:100%;text-align:left;font:inherit;background:none;color:inherit;border:0;cursor:pointer}
 #themeMenu i{display:inline-block;width:10px;height:10px;margin-right:8px;vertical-align:-1px}
-#roster{width:300px;max-height:70vh;overflow:auto}
+#roster{width:400px;max-height:70vh;overflow:auto}
 #roster .who{display:flex;gap:8px;align-items:baseline;margin:4px 0}
 #roster .who i{width:8px;height:8px;flex:none}
-#roster .who b{flex:none;width:76px}
+#roster .who b{flex:none;width:70px}
+#roster .who em{flex:none;width:118px;font-style:normal;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #roster .who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 dialog{min-width:340px}
 dialog .row{display:flex;align-items:center;gap:8px;margin:8px 0}
-dialog .row b{width:90px}
+dialog .row b{width:80px}
+dialog input.role{width:150px;font:inherit;padding:3px 7px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);color:inherit}
+body.retro dialog input.role{border-radius:0;border:1px solid #d4a640;background:#1a100b}
 dialog img{width:24px;height:32px;image-rendering:pixelated;background:#5d7c37}
 dialog button{font:inherit;cursor:pointer}
 
@@ -106,37 +109,37 @@ body.retro dialog img{border-radius:0}
 'use strict';
 // ---------- languages ----------
 const LANGS = {
-  en: { retro: 'Retro UI', theme: 'Theme', themes: { cafe: 'Café', cabin: 'Snowy cabin', sakura: 'Sakura', matcha: 'Tea house', starlight: 'Starlight' }, name: 'English', title: 'AI OFFICE', connecting: 'connecting…', live: 'live', reconnecting: 'reconnecting…', demo: 'demo', team: 'Team', sprites: 'Sprites', fit: 'Fit',
+  en: { role: 'Role', roles: { qa: 'QA Engineer', backend: 'Backend Developer', data: 'Data Analyst', research: 'Researcher', social: 'Trend Scout', assistant: 'Assistant' }, retro: 'Retro UI', theme: 'Theme', themes: { cafe: 'Café', cabin: 'Snowy cabin', sakura: 'Sakura', matcha: 'Tea house', starlight: 'Starlight' }, name: 'English', title: 'AI OFFICE', connecting: 'connecting…', live: 'live', reconnecting: 'reconnecting…', demo: 'demo', team: 'Team', sprites: 'Sprites', fit: 'Fit',
     zoomIn: 'Zoom in', zoomOut: 'Zoom out', dlgTitle: 'Agent sprites', dlgHelp: 'Upload a PNG for any agent. Transparent backgrounds work best; it is fitted into a 24×32 pixel box. Saved in this browser.',
     done: 'Done', reset: 'Reset', ceo: 'CEO (you)', stats: (n, m) => n + ' routed · ' + m + ' handed in', workingN: (n) => 'Working (' + n + ')', restingN: (n) => 'Resting (' + n + ')', nobody: 'Nobody',
     pngOnly: 'Please choose a PNG file.', full: 'Could not save: browser storage is full.', spriteFor: (n) => 'Sprite for ' + n, language: 'Language',
     st: { working: 'working', thinking: 'thinking', waiting: 'waiting', error: 'error', done: 'done', idle: 'idle' },
     where: { away: 'out of office', ceo: 'handing in', door: 'heading out', seat: 'walking back' } },
-  zh: { retro: '复古界面', theme: '主题', themes: { cafe: '咖啡馆', cabin: '雪夜小屋', sakura: '樱花', matcha: '茶室', starlight: '星光' }, name: '简体中文', title: 'AI 办公室', connecting: '连接中…', live: '在线', reconnecting: '重新连接中…', demo: '演示', team: '团队', sprites: '形象', fit: '适应',
+  zh: { role: '角色', roles: { qa: '测试工程师', backend: '后端开发', data: '数据分析师', research: '研究员', social: '趋势观察员', assistant: '助手' }, retro: '复古界面', theme: '主题', themes: { cafe: '咖啡馆', cabin: '雪夜小屋', sakura: '樱花', matcha: '茶室', starlight: '星光' }, name: '简体中文', title: 'AI 办公室', connecting: '连接中…', live: '在线', reconnecting: '重新连接中…', demo: '演示', team: '团队', sprites: '形象', fit: '适应',
     zoomIn: '放大', zoomOut: '缩小', dlgTitle: '角色形象', dlgHelp: '为任一角色上传 PNG。透明背景效果最好，图片会缩放到 24×32 像素。保存在此浏览器中。',
     done: '完成', reset: '重置', ceo: 'CEO（你）', stats: (n, m) => '已分派 ' + n + ' · 已交 ' + m, workingN: (n) => '工作中（' + n + '）', restingN: (n) => '休息中（' + n + '）', nobody: '无人',
     pngOnly: '请选择 PNG 文件。', full: '无法保存：浏览器存储已满。', spriteFor: (n) => n + ' 的形象', language: '语言',
     st: { working: '工作中', thinking: '思考中', waiting: '等待中', error: '出错', done: '完成', idle: '空闲' },
     where: { away: '不在办公室', ceo: '交文件中', door: '下班中', seat: '回座位' } },
-  ja: { retro: 'レトロUI', theme: 'テーマ', themes: { cafe: 'カフェ', cabin: '雪の山小屋', sakura: '桜', matcha: '茶室', starlight: '星空' }, name: '日本語', title: 'AI オフィス', connecting: '接続中…', live: 'ライブ', reconnecting: '再接続中…', demo: 'デモ', team: 'チーム', sprites: 'スプライト', fit: '全体',
+  ja: { role: '役割', roles: { qa: 'QAエンジニア', backend: 'バックエンド開発', data: 'データアナリスト', research: 'リサーチャー', social: 'トレンド担当', assistant: 'アシスタント' }, retro: 'レトロUI', theme: 'テーマ', themes: { cafe: 'カフェ', cabin: '雪の山小屋', sakura: '桜', matcha: '茶室', starlight: '星空' }, name: '日本語', title: 'AI オフィス', connecting: '接続中…', live: 'ライブ', reconnecting: '再接続中…', demo: 'デモ', team: 'チーム', sprites: 'スプライト', fit: '全体',
     zoomIn: '拡大', zoomOut: '縮小', dlgTitle: 'エージェントのスプライト', dlgHelp: '各エージェントの PNG をアップロードできます。透過背景がおすすめです。24×32 ピクセルに収まります。このブラウザに保存されます。',
     done: '完了', reset: 'リセット', ceo: 'CEO（あなた）', stats: (n, m) => '振り分け ' + n + ' · 提出 ' + m, workingN: (n) => '作業中（' + n + '）', restingN: (n) => '休憩中（' + n + '）', nobody: 'なし',
     pngOnly: 'PNG ファイルを選んでください。', full: '保存できません：ブラウザの容量がいっぱいです。', spriteFor: (n) => n + ' のスプライト', language: '言語',
     st: { working: '作業中', thinking: '考え中', waiting: '待機中', error: 'エラー', done: '完了', idle: '休憩' },
     where: { away: '不在', ceo: '提出中', door: '退勤中', seat: '席に戻り中' } },
-  ko: { retro: '레트로 UI', theme: '테마', themes: { cafe: '카페', cabin: '눈 오는 오두막', sakura: '벚꽃', matcha: '다실', starlight: '별빛' }, name: '한국어', title: 'AI 오피스', connecting: '연결 중…', live: '라이브', reconnecting: '다시 연결 중…', demo: '데모', team: '팀', sprites: '스프라이트', fit: '맞춤',
+  ko: { role: '역할', roles: { qa: 'QA 엔지니어', backend: '백엔드 개발자', data: '데이터 분석가', research: '리서처', social: '트렌드 스카우트', assistant: '어시스턴트' }, retro: '레트로 UI', theme: '테마', themes: { cafe: '카페', cabin: '눈 오는 오두막', sakura: '벚꽃', matcha: '다실', starlight: '별빛' }, name: '한국어', title: 'AI 오피스', connecting: '연결 중…', live: '라이브', reconnecting: '다시 연결 중…', demo: '데모', team: '팀', sprites: '스프라이트', fit: '맞춤',
     zoomIn: '확대', zoomOut: '축소', dlgTitle: '에이전트 스프라이트', dlgHelp: '에이전트별 PNG를 올릴 수 있어요. 투명 배경이 가장 좋고, 24×32 픽셀에 맞춰집니다. 이 브라우저에 저장돼요.',
     done: '완료', reset: '초기화', ceo: 'CEO (나)', stats: (n, m) => '배정 ' + n + ' · 제출 ' + m, workingN: (n) => '작업 중 (' + n + ')', restingN: (n) => '휴식 중 (' + n + ')', nobody: '없음',
     pngOnly: 'PNG 파일을 선택하세요.', full: '저장할 수 없어요: 브라우저 저장 공간이 가득 찼습니다.', spriteFor: (n) => n + ' 스프라이트', language: '언어',
     st: { working: '작업 중', thinking: '생각 중', waiting: '대기 중', error: '오류', done: '완료', idle: '휴식' },
     where: { away: '부재 중', ceo: '제출 중', door: '퇴근 중', seat: '자리로 복귀' } },
-  es: { retro: 'UI retro', theme: 'Tema', themes: { cafe: 'Café', cabin: 'Cabaña nevada', sakura: 'Sakura', matcha: 'Casa de té', starlight: 'Luz de estrellas' }, name: 'Español', title: 'OFICINA IA', connecting: 'conectando…', live: 'en vivo', reconnecting: 'reconectando…', demo: 'demo', team: 'Equipo', sprites: 'Sprites', fit: 'Ajustar',
+  es: { role: 'Rol', roles: { qa: 'QA', backend: 'Desarrollo backend', data: 'Análisis de datos', research: 'Investigación', social: 'Tendencias', assistant: 'Asistente' }, retro: 'UI retro', theme: 'Tema', themes: { cafe: 'Café', cabin: 'Cabaña nevada', sakura: 'Sakura', matcha: 'Casa de té', starlight: 'Luz de estrellas' }, name: 'Español', title: 'OFICINA IA', connecting: 'conectando…', live: 'en vivo', reconnecting: 'reconectando…', demo: 'demo', team: 'Equipo', sprites: 'Sprites', fit: 'Ajustar',
     zoomIn: 'Acercar', zoomOut: 'Alejar', dlgTitle: 'Sprites de agentes', dlgHelp: 'Sube un PNG para cualquier agente. Mejor con fondo transparente; se ajusta a 24×32 píxeles. Se guarda en este navegador.',
     done: 'Listo', reset: 'Restablecer', ceo: 'CEO (tú)', stats: (n, m) => n + ' asignadas · ' + m + ' entregadas', workingN: (n) => 'Trabajando (' + n + ')', restingN: (n) => 'Descansando (' + n + ')', nobody: 'Nadie',
     pngOnly: 'Elige un archivo PNG.', full: 'No se pudo guardar: el almacenamiento del navegador está lleno.', spriteFor: (n) => 'Sprite de ' + n, language: 'Idioma',
     st: { working: 'trabajando', thinking: 'pensando', waiting: 'esperando', error: 'error', done: 'listo', idle: 'libre' },
     where: { away: 'fuera', ceo: 'entregando', door: 'saliendo', seat: 'volviendo' } },
-  fr: { retro: 'UI rétro', theme: 'Thème', themes: { cafe: 'Café', cabin: 'Chalet enneigé', sakura: 'Sakura', matcha: 'Maison de thé', starlight: 'Nuit étoilée' }, name: 'Français', title: 'BUREAU IA', connecting: 'connexion…', live: 'en direct', reconnecting: 'reconnexion…', demo: 'démo', team: 'Équipe', sprites: 'Sprites', fit: 'Ajuster',
+  fr: { role: 'Rôle', roles: { qa: 'Ingénieur QA', backend: 'Dév. backend', data: 'Analyste de données', research: 'Recherche', social: 'Veille tendances', assistant: 'Assistant' }, retro: 'UI rétro', theme: 'Thème', themes: { cafe: 'Café', cabin: 'Chalet enneigé', sakura: 'Sakura', matcha: 'Maison de thé', starlight: 'Nuit étoilée' }, name: 'Français', title: 'BUREAU IA', connecting: 'connexion…', live: 'en direct', reconnecting: 'reconnexion…', demo: 'démo', team: 'Équipe', sprites: 'Sprites', fit: 'Ajuster',
     zoomIn: 'Zoomer', zoomOut: 'Dézoomer', dlgTitle: 'Sprites des agents', dlgHelp: 'Importez un PNG pour n’importe quel agent. Un fond transparent marche mieux ; il est ajusté à 24×32 pixels. Enregistré dans ce navigateur.',
     done: 'OK', reset: 'Réinitialiser', ceo: 'PDG (vous)', stats: (n, m) => n + ' attribuées · ' + m + ' remises', workingN: (n) => 'Au travail (' + n + ')', restingN: (n) => 'En pause (' + n + ')', nobody: 'Personne',
     pngOnly: 'Choisissez un fichier PNG.', full: 'Enregistrement impossible : le stockage du navigateur est plein.', spriteFor: (n) => 'Sprite de ' + n, language: 'Langue',
@@ -390,6 +393,8 @@ const DETAIL = {
   ],
 };
 SPRITES.grok = { ...SPRITES.robot, name: 'Grok' }; // drawn fallback; real art is sprites/grok.png
+const DEFAULT_ROLE = { claude: 'qa', chatgpt: 'backend', deepseek: 'data', gemini: 'research', grok: 'social' };
+const roleOf = (f) => localStorage.getItem('role:' + f) || L().roles?.[DEFAULT_ROLE[f] || 'assistant'] || LANGS.en.roles[DEFAULT_ROLE[f] || 'assistant'];
 const custom = {}; // uploaded PNGs, by agent key
 // Bundled art in agentboard/sprites/<key>.png: cropped to the character, then shrunk into the 24x32 sprite box
 // with area averaging, and alpha snapped to on/off so it reads as chunky pixel art.
@@ -1203,7 +1208,7 @@ function frame(t) {
   text(tr('title'), W / 2, 17, '#ffe9a8', 4);
   for (const [f, a, sx, sy, st, b] of labels) {
     const w = where(b);
-    text((SPRITES[f]?.name || f.toUpperCase()), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff');
+    text((SPRITES[f]?.name || f.toUpperCase()) + ' · ' + roleOf(f), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff', 2.6);
     text(w ? L().where[w] : L().st[st] || st, sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
     if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 8);
   }
@@ -1221,7 +1226,7 @@ function renderRoster() {
   const now = Date.now(), work = [], rest = [];
   for (const [f, a] of agents) {
     const st = shown(a, now), b = bodies.get(f), w = b && where(b);
-    (ACTIVE.has(st) ? work : rest).push({ name: SPRITES[f]?.name || f, st: w || st, label: w ? L().where[w] : L().st[st] || st, detail: ACTIVE.has(st) ? a.detail : '' });
+    (ACTIVE.has(st) ? work : rest).push({ name: SPRITES[f]?.name || f, role: roleOf(f), st: w || st, label: w ? L().where[w] : L().st[st] || st, detail: ACTIVE.has(st) ? a.detail : '' });
   }
   roster.textContent = '';
   for (const [title, list] of [[tr('workingN', work.length), work], [tr('restingN', rest.length), rest]]) {
@@ -1231,8 +1236,9 @@ function renderRoster() {
       const row = document.createElement('div'); row.className = 'who';
       const dot = document.createElement('i'); dot.style.background = COLORS[it.st] || '#e0c080';
       const n = document.createElement('b'); n.textContent = it.name;
+      const ro = document.createElement('em'); ro.textContent = it.role;
       const s = document.createElement('span'); s.textContent = it.label + (it.detail ? ' · ' + it.detail : '');
-      row.append(dot, n, s); roster.append(row);
+      row.append(dot, n, ro, s); roster.append(row);
     }
   }
 }
@@ -1264,7 +1270,14 @@ function renderList() {
     inp.onchange = () => upload(k, inp.files[0]);
     const reset = document.createElement('button'); reset.type = 'button'; reset.textContent = tr('reset');
     reset.onclick = () => { localStorage.removeItem('sprite:' + k); loadCustom(k); renderList(); };
-    row.append(name, img, inp, reset); list.append(row);
+    let role = null;
+    if (k !== 'ceo') {
+      role = document.createElement('input'); role.type = 'text'; role.className = 'role'; role.maxLength = 28;
+      role.placeholder = L().roles?.[DEFAULT_ROLE[k] || 'assistant'] || ''; role.value = localStorage.getItem('role:' + k) || '';
+      role.setAttribute('aria-label', tr('role') + ': ' + name.textContent);
+      role.oninput = () => { const v = role.value.trim(); v ? localStorage.setItem('role:' + k, v) : localStorage.removeItem('role:' + k); if (!roster.hidden) renderRoster(); };
+    }
+    row.append(...(role ? [name, role] : [name]), img, inp, reset); list.append(row);
   }
 }
 for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('sprite:')) loadCustom(k.slice(7)); }
