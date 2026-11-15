@@ -1,0 +1,5 @@
+{
+  "name": "pixel-ai-office",
+  "version": "0.1.0",
+  "description": "A cozy pixel-art office that shows what each AI agent (Claude, ChatGPT, DeepSeek, Gemini...) behind your router is doing, with you in the CEO seat."
+}

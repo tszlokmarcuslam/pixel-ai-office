@@ -299,6 +299,15 @@ const server = http.createServer((req, res) => {
     fs.readFile(PAGE, (err, buf) => err ? send(res, 500, 'text/plain', 'index.html missing') : send(res, 200, 'text/html; charset=utf-8', buf));
     return;
   }
+  if (url.pathname === '/office') {
+    fs.readFile(path.join(DIR, 'office.html'), (err, buf) => err ? send(res, 500, 'text/plain', 'office.html missing') : send(res, 200, 'text/html; charset=utf-8', buf));
+    return;
+  }
+  const spr = /^\/sprites\/([a-z0-9-]{1,32})\.png$/.exec(url.pathname); // fixed folder, safe names only
+  if (spr) {
+    fs.readFile(path.join(DIR, 'sprites', spr[1] + '.png'), (err, buf) => err ? send(res, 404, 'text/plain', 'no sprite') : send(res, 200, 'image/png', buf));
+    return;
+  }
   if (url.pathname === '/team.json') {
     fs.readFile(TEAM, (err, buf) => err ? send(res, 404, 'application/json', '{"error":"team.json missing"}') : send(res, 200, 'application/json; charset=utf-8', buf));
     return;

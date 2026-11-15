@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pixel AI Office</title>
+<style>
+html,body{margin:0;height:100%;background:#140d0a;overflow:hidden;color:#fff;font:bold 14px monospace}
+#bar{height:28px;line-height:28px;text-align:center;background:#000a;letter-spacing:1px}
+#bar span{color:#9fe3c4}
+canvas{display:block;margin:0 auto;image-rendering:pixelated}
+#wrap{height:calc(100vh - 28px);overflow:auto}
+#zoom{position:fixed;top:3px;left:8px;display:flex;gap:4px;z-index:2}
+#zoom button{font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;padding:1px 8px;cursor:pointer}
+#teamBtn{position:fixed;top:3px;right:120px;z-index:2;font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;padding:1px 8px;cursor:pointer}
+#roster{position:fixed;top:30px;right:8px;z-index:3;width:300px;max-height:70vh;overflow:auto;background:#2a1a12f2;border:3px solid #d4a640;padding:4px 10px;font:12px monospace}
+#roster h4{margin:8px 0 4px;color:#ffe9a8}
+#roster .who{display:flex;gap:6px;align-items:baseline;margin:3px 0}
+#roster .who i{width:8px;height:8px;flex:none}
+#roster .who b{flex:none;width:72px}
+#roster .who span{color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#roster .none{color:#888;margin:2px 0}
+#gear{z-index:2;position:fixed;top:3px;right:8px;font:bold 13px monospace;background:#5a2e1c;color:#ffe9a8;border:2px solid #d4a640;padding:1px 8px;cursor:pointer}
+dialog{background:#2a1a12;color:#fff;border:3px solid #d4a640;font:13px monospace;min-width:340px}
+dialog .row{display:flex;align-items:center;gap:8px;margin:6px 0}
+dialog .row b{width:90px}
+dialog img{width:24px;height:32px;image-rendering:pixelated;background:#5d7c37}
+dialog button{font:inherit;background:#5a2e1c;color:#ffe9a8;border:1px solid #d4a640;cursor:pointer}
+</style></head>
+<body>
+<div id="bar" role="status">AI OFFICE · <span id="conn">connecting…</span></div>
+<button id="teamBtn" type="button" aria-expanded="false" aria-controls="roster">👥 Team ▾</button>
+<div id="roster" hidden></div>
+<button id="gear" type="button">⚙ Sprites</button>
+<dialog id="dlg" aria-labelledby="dlgT">
+  <h3 id="dlgT">Agent sprites</h3>
+  <p>Upload a PNG for any agent. Transparent backgrounds work best; it is fitted into a 24×32 pixel box. Saved in this browser.</p>
+  <div id="list"></div>
+  <p><button type="button" onclick="dlg.close()">Done</button></p>
+</dialog>
+<div id="zoom"><button id="zout" type="button" aria-label="Zoom out">−</button><button id="zfit" type="button">Fit</button><button id="zin" type="button" aria-label="Zoom in">+</button></div>
+<div id="wrap"><canvas id="c" aria-label="Pixel office showing what each AI agent is doing"></canvas></div>
+<script>
+'use strict';
+let W = 320; const H = 180;
+const off = document.createElement('canvas'); off.width = W * 2; off.height = H * 2;
+const g = off.getContext('2d');
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let S = 1;
+let zoom = 0; // 0 = fit to window; each step is half a scale level
+function fit() {
+  const f = Math.min(innerWidth / W, (innerHeight - 28) / H);
+  S = Math.max(0.5, (f >= 1 ? Math.floor(f) : Math.floor(f * 2) / 2 || 0.5) + zoom * 0.5);
+  cv.width = Math.round(W * S); cv.height = Math.round(H * S);
+}
+addEventListener('resize', fit); fit();
+let wheelAcc = 0;
+const setZoom = (d) => { zoom = d === 0 ? 0 : Math.max(-6, Math.min(12, zoom + d)); fit(); };
+document.getElementById('zin').onclick = () => setZoom(1);
+document.getElementById('zout').onclick = () => setZoom(-1);
+document.getElementById('zfit').onclick = () => setZoom(0);
+document.getElementById('wrap').addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault();
+  // pinch/ctrl+wheel sends many small deltas: zoom one step per ~80 px of scroll
+  wheelAcc += e.deltaY; if (Math.abs(wheelAcc) >= 80) { setZoom(wheelAcc < 0 ? 1 : -1); wheelAcc = 0; } }, { passive: false });
+
+// ---------- sprites: 12x16, one char per pixel ----------
+const mirror = (half) => half.map((h) => h + [...h].reverse().join(''));
+const BASE = { S: '#ffd8c2', K: '#1b1b2a', W: '#ffffff', m: '#c0504d', P: '#ff9eae' };
+const SPRITES = {
+  // chibi style: big head (10 rows), tiny body, big 2x2 eyes (dark top, coloured bottom) + sparkle highlights
+  // full-res (hi: 24x32, 1 char = 1 screen pixel) in the chunky "grid paper" chibi style: big head, big glossy eyes
+  deepseek: { name: 'DeepSeek', hi: true, pal: {
+    B: '#2b3f9e', b: '#3d5fc8', l: '#6c9cf0', G: '#ffffff', g: '#c9cde0', S: '#ffe4d6', K: '#141a3a', E: '#3a7bd5', e: '#8fd0ff',
+    P: '#ffa3b5', m: '#b0505d', F: '#4a68c8', f: '#8fb4ff', D: '#1e2a5a', A: '#ffffff', O: '#1e2a5a' }, rows: mirror([
+    '............',
+    '............',
+    '......GgGgGg', // maid headband frill
+    '.....GBBBBBB',
+    '....bBBBBBBB',
+    '...bBBlBBBBB',
+    '..bBBBBBBBBB',
+    '..BBBBBSBBBB', // bangs
+    '.FBBBBSSBBSB',
+    'FfBBBSSSSBSS', // whale-fin ears
+    'FfBBSSSSSSSS',
+    '.FBBSKKKKSSS', // big eyes: 4x4
+    '..BBSKKEKSSS',
+    '..BBSKEEKSSS',
+    '..BBSKeeKSSS',
+    '..BbSPPSSSSS', // blush
+    '..BbbSSSSSSm',
+    '..bBbbSSSSSS',
+    '..bb.DDDDGGG', // collar
+    '..bb.SDDDAAA', // apron
+    '..lb.SDDAAAA',
+    '..lb..DDAAAA',
+    '..ll..DDAAAA',
+    '...l..DDDAAA',
+    '......DGDGDG', // frilly hem
+    '......GDGDGD',
+    '........SS..',
+    '........GG..',
+    '........GG..',
+    '........OO..',
+    '.......OOO..',
+    '............']) },
+  claude: { name: 'Claude', pal: { O: '#d97757', W: '#ffffff' }, rows: [ // Clawd: wide body, side nubs, square eyes, four legs
+    '............',
+    '............',
+    '............',
+    '............',
+    '.OOOOOOOOOO.',
+    '.OOOOOOOOOO.',
+    '.OOKOOOOKOO.',
+    'OOOKOOOOKOOO',
+    'OOOOOOOOOOOO',
+    '.OOOOOOOOOO.',
+    '.OOOOOOOOOO.',
+    '.OO.O..O.OO.',
+    '.OO.O..O.OO.',
+    '.WW.W..W.WW.',
+    '.WW.W..W.WW.',
+    '............'] },
+  chatgpt: { name: 'ChatGPT', pal: { H: '#eceef5', h: '#b9bccb', E: '#2fb39a', T: '#2fb39a', W: '#fafafa', K: '#2a2a33' }, rows: [
+    '.h........h.',
+    '.hHHHHHHHHh.',
+    'HHHHHHHHHHHH',
+    'HHHHHHHHHHHH',
+    'HHSSHSSHSSHH',
+    'HSSSSSSSSSSH',
+    'HSKKSSSSKKSH',
+    'HSEESSSSEESH',
+    'HhPSSmmSSPhH',
+    'Hh.SSSSSS.hH',
+    'h.WWKKKKWW.h',
+    '.SWWKKKKWWS.',
+    '..WWKKKKWW..',
+    '..TTTTTTTT..',
+    '...SS..SS...',
+    '...WW..WW...'] },
+  gemini: { name: 'Gemini', pal: { A: '#6a5cff', a: '#3b8bff', E: '#3b8bff', V: '#2b2b5c', Y: '#ffd34d' }, rows: [
+    '....aAAa..Y.',
+    '..aAAAAAAa..',
+    '.aAAAAAAAAa.',
+    'aAAAAAAAAAAa',
+    'AASSASSASSAA',
+    'ASSSSSSSSSSA',
+    'ASKKSSSSKKSA',
+    'ASEESSSSEESA',
+    'AaPSSmmSSPaA',
+    'Aa.SSSSSS.aA',
+    'a.VVVVVVVV.a',
+    '.SVVVVVVVVS.',
+    '..VVVVVVVV..',
+    '..VVVVVVVV..',
+    '...SS..SS...',
+    '...KK..KK...'] },
+  robot: { name: '', pal: { M: '#9aa4b1', N: '#5ad1ff', C: '#5ad1ff', R: '#ff5a5a' }, rows: [
+    '.....R......',
+    '.....K......',
+    '.MMMMMMMMMM.',
+    'MMMMMMMMMMMM',
+    'MKKKKKKKKKKM',
+    'MKKKKKKKKKKM',
+    'MKCCKKKKCCKM',
+    'MKCCKKKKCCKM',
+    'MKKKKKKKKKKM',
+    '.MMMMMMMMMM.',
+    '..MMNNNNMM..',
+    '.MMMNNNNMMM.',
+    '..MMMMMMMM..',
+    '..MMMMMMMM..',
+    '...MM..MM...',
+    '...KK..KK...'] },
+  ceo: { name: 'CEO (you)', pal: { N: '#5a3a22', U: '#22304a', R: '#c0392b', E: '#7a4a22', Y: '#ffd34d' }, rows: [
+    '...Y.YY.Y...',
+    '..NYYYYYYN..',
+    '.NNNNNNNNNN.',
+    'NNNNNNNNNNNN',
+    'NNSSNSSNSSNN',
+    'NSSSSSSSSSSN',
+    'NSKKSSSSKKSN',
+    'NSEESSSSEESN',
+    'NNPSSmmSSPNN',
+    '.N.SSSSSS.N.',
+    '..UUWRRWUU..',
+    '.SUUWRRWUUS.',
+    '..UUURRUUU..',
+    '..UUUUUUUU..',
+    '...UU..UU...',
+    '...KK..KK...'] },
+};
+for (const s of Object.values(SPRITES)) console.assert(s.rows.length === (s.hi ? 32 : 16) && s.rows.every((r) => r.length === (s.hi ? 24 : 12)), 'bad sprite', s.name);
+
+// Hi-res detail layers (1 px = half a room pixel), drawn on top of the doubled base map: [rows, x, y, extra palette]
+const EYES = [[['W'], 5, 12, { W: '#fff' }], [['W'], 17, 12, { W: '#fff' }], [['w'], 6, 14, { w: '#d8f4ff' }], [['w'], 18, 14, { w: '#d8f4ff' }]]; // big eyes, small sparkles keep the dark pupils
+const DETAIL = {
+  chatgpt: [...EYES,
+    [['..KKK..', '.K.K.K.', 'K.KKK.K', 'KKK.KKK', 'K.KKK.K', '.K.K.K.', '..KKK..'], 16, 3, { K: '#2a2a33' }], // logo hair clip
+    [['..TTT..', '.T.T.T.', 'T.TTT.T', 'TTT.TTT', 'T.TTT.T', '.T.T.T.', '..TTT..'], 8, 19, { T: '#3fe0bf' }], // logo on the shirt
+    [['hhh', '.hh'], 4, 4, { h: '#ffffff' }], // hair shine
+  ],
+  deepseek: [
+    [['W'], 7, 12, { W: '#fff' }], [['W'], 18, 12, { W: '#fff' }], // eye shine
+    [['.BB', 'B..', 'B..'], 11, 0, { B: '#2b3f9e' }], // ahoge
+    [['RR.RR', '.RRR.', 'RR.RR'], 2, 5, { R: '#4fa3e0' }], // ribbon bow
+    [['...w.', 'wwww.', 'wKwww', '.www.'], 10, 20, { w: '#6c8cff', K: '#fff' }], // whale on the apron
+    [['..T', '.TT', 'TTT', '.TT', 'T.T'], 20, 22, { T: '#3a6fd0' }], // fish tail
+  ],
+  gemini: [...EYES,
+    [['...a...', '...A...', '..aAa..', 'aAAWAAa', '..aAa..', '...A...', '...a...'], 9, 19, { A: '#8a7bff', a: '#4aa0ff' }], // sparkle
+    [['ww', '.w'], 5, 3, { w: '#a9b8ff' }],
+  ],
+  claude: [], // flat Clawd look: no shading
+  ceo: [...EYES,
+    [['R'], 11, 2, { R: '#e74c3c' }], [['B'], 7, 2, { B: '#3fa9f5' }], [['B'], 16, 2, { B: '#3fa9f5' }], // crown gems
+    [['hhh', '.hh'], 5, 5, { h: '#7a5232' }], // hair shine
+    [['Y.', '.Y', 'Y.'], 11, 21, { Y: '#ffd34d' }], // tie stripes
+  ],
+  robot: [
+    [['WR', 'RR'], 10, 0, { R: '#ff8a8a' }], // antenna bulb shine
+    [['WW', 'WW'], 4, 12, { W: '#fff' }], [['WW', 'WW'], 16, 12, { W: '#fff' }], // eye shine
+    [['m....m', '.mmmm.'], 9, 16, { m: '#5ad1ff' }], // screen smile
+    [['RYG'], 10, 21, { R: '#ff5a5a', Y: '#ffd34d', G: '#6fe08a' }], // chest lights
+  ],
+};
+SPRITES.grok = { ...SPRITES.robot, name: 'Grok' }; // drawn fallback; real art is sprites/grok.png
+const custom = {}; // uploaded PNGs, by agent key
+// Bundled art in agentboard/sprites/<key>.png: cropped to the character, then shrunk into the 24x32 sprite box
+// with area averaging, and alpha snapped to on/off so it reads as chunky pixel art.
+const bundled = {};
+// Art that is already pixel art on a flat background with a white sticker border (e.g. Grok):
+// clip away watermarks, flood-fill the background + white border to transparent from the edges,
+// sample one pixel per art block (no resampling mush), then double it to match the others' size.
+function unsticker(img, { clip: [cx0, cy0, cx1, cy1], block, scale = 2, pixelH }) {
+  const w = cx1 - cx0, h = cy1 - cy0, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.drawImage(img, cx0, cy0, w, h, 0, 0, w, h);
+  const id = x.getImageData(0, 0, w, h), d = id.data, bg = [d[0], d[1], d[2]];
+  // two passes so blonde hair (close to the background colour) survives: background from the edges, then only the white border it touches
+  const isBg = (i) => Math.hypot(d[i] - bg[0], d[i + 1] - bg[1], d[i + 2] - bg[2]) < 24;
+  const isWhite = (i) => d[i] > 238 && d[i + 1] > 238 && d[i + 2] > 238;
+  const seen = new Uint8Array(w * h);
+  const fill = (seeds, ok) => { const stack = seeds; while (stack.length) { const p = stack.pop(); if (seen[p] || !ok(p * 4)) continue; seen[p] = 1; d[p * 4 + 3] = 0;
+    const px = p % w, py = (p / w) | 0; if (px) stack.push(p - 1); if (px < w - 1) stack.push(p + 1); if (py) stack.push(p - w); if (py < h - 1) stack.push(p + w); } };
+  const edges = []; for (let i = 0; i < w; i++) edges.push(i, (h - 1) * w + i); for (let j = 0; j < h; j++) edges.push(j * w, j * w + w - 1);
+  fill(edges, isBg);
+  const rim = []; for (let p = 0; p < w * h; p++) if (seen[p]) { const px = p % w; if (px) rim.push(p - 1); if (px < w - 1) rim.push(p + 1); if (p >= w) rim.push(p - w); if (p < w * h - w) rim.push(p + w); }
+  fill(rim, isWhite);
+  x.putImageData(id, 0, 0);
+  if (pixelH) return pixelate(c, pixelH); // painted art: shrink like DeepSeek/Gemini instead of block sampling
+  // bbox of what's left, then one sample (block centre) per art pixel
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (d[(j * w + i) * 4 + 3]) { x0 = Math.min(x0, i); x1 = Math.max(x1, i); y0 = Math.min(y0, j); y1 = Math.max(y1, j); }
+  const cols = Math.round((x1 - x0 + 1) / block), rows = Math.round((y1 - y0 + 1) / block);
+  const o = document.createElement('canvas'); o.width = cols * scale; o.height = rows * scale; const ox = o.getContext('2d');
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const sx = Math.min(x1, Math.round(x0 + (i + 0.5) * block)), sy = Math.min(y1, Math.round(y0 + (j + 0.5) * block)), q = (sy * w + sx) * 4;
+    if (!d[q + 3]) continue; ox.fillStyle = 'rgb(' + d[q] + ',' + d[q + 1] + ',' + d[q + 2] + ')'; ox.fillRect(i * scale, j * scale, scale, scale);
+  }
+  // drop leftover specks of the white sticker border on the silhouette edge
+  const od = ox.getImageData(0, 0, o.width, o.height), e = od.data, at = (i, j) => i < 0 || j < 0 || i >= cols || j >= rows || !e[((j * scale) * o.width + i * scale) * 4 + 3];
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const q = ((j * scale) * o.width + i * scale) * 4;
+    if (e[q + 3] && e[q] > 225 && e[q + 1] > 225 && e[q + 2] > 215 && (at(i - 1, j) || at(i + 1, j) || at(i, j - 1) || at(i, j + 1))) ox.clearRect(i * scale, j * scale, scale, scale);
+  }
+  return o;
+}
+function outlined(src, color) { // 1 px border around every opaque pixel; output is 2 px larger each way
+  const w = src.width, h = src.height, d = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const o = document.createElement('canvas'); o.width = w + 2; o.height = h + 2; const ox = o.getContext('2d'); ox.fillStyle = color;
+  const on = (x, y) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0;
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) if (!on(x, y) && (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1))) ox.fillRect(x + 1, y + 1, 1, 1);
+  ox.drawImage(src, 1, 1); return o;
+}
+// where the head ends, where the legs start, and the eye boxes [x, y, w, h], per bundled sprite
+// Grok: the reference is a bust, so shrink just the head to chibi size and give her a small drawn body
+// (black dress with red trim, gold belt, little legs) like the other full-body agents.
+function composeGrok(img) {
+  const head = unsticker(img, { clip: [0, 0, 225, 116], pixelH: 28 });
+  const hx = head.getContext('2d'), hd = hx.getImageData(0, 0, head.width, head.height), e = hd.data, W2 = head.width;
+  for (let pass = 0; pass < 2; pass++) { // white specks between curls (enclosed background) touching the edge: clear them
+    const clear = [];
+    for (let y = 0; y < head.height; y++) for (let x = 0; x < W2; x++) {
+      const i = (y * W2 + x) * 4, t = (xx, yy) => xx < 0 || yy < 0 || xx >= W2 || yy >= head.height || !e[(yy * W2 + xx) * 4 + 3];
+      if (e[i + 3] && e[i] > 232 && e[i + 1] > 228 && e[i + 2] > 222 && (t(x - 1, y) || t(x + 1, y) || t(x, y - 1) || t(x, y + 1))) clear.push(i);
+    }
+    for (const i of clear) e[i + 3] = 0;
+  }
+  hx.putImageData(hd, 0, 0);
+  const body = ['........RDDDD', '.......DDDDDD', '......SDDRDDD', '.....SSDDDDDD', '......DDDGGGG', '.....DDDDDRDD', '....DDDDDDDDD',
+    '...RDDDDDDDDD', '..RRDDDDRDDDD', '..RRRRDDDRRRR', '.......SS....', '.......SS....', '.......KK....', '......KKK....', '.............'];
+  const pal = { R: '#8e1f3a', D: '#2a1d2e', G: '#c9a24a', S: '#fce3c9', K: '#1a1220' };
+  const rows = body.map((h) => h + [...h].reverse().join('')), bw = rows[0].length, bh = rows.length;
+  const c = document.createElement('canvas'); c.width = Math.max(head.width, bw); c.height = head.height + bh - 1;
+  const cx = c.getContext('2d'), bx = (c.width - bw) >> 1;
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (pal[ch]) { cx.fillStyle = pal[ch]; cx.fillRect(bx + x, head.height - 1 + y, 1, 1); } }));
+  cx.drawImage(head, (c.width - head.width) >> 1, 0); // head over the collar
+  return c;
+}
+// rigs for PNG art in sprites/ (used instead of the drawn rig when that PNG loads)
+const PNG_RIG = {
+  // her head is turned the other way from her body in the art: headFlip mirrors the head slice so both face the same way
+  grok: { compose: composeGrok, outline: '#2b1e2e', head: 29, legs: 39, eyes: [[18, 21, 5, 4], [27, 21, 5, 4]], skin: '#fbe0cc', lash: '#2b1e2e' },
+  // pale art: a 1 px outline keeps her readable on the floor (coords below include that +1 padding)
+  chatgpt: { outline: '#5a4f80', head: 24, legs: 39, eyes: [[12, 17, 5, 5], [21, 17, 5, 4]], skin: '#fbe4dc', lash: '#5a4f80' },
+  gemini: { head: 23, legs: 38, headFlip: true, facesLeft: true, eyes: [[18, 15, 6, 4], [9, 15, 6, 4]], skin: '#fbe0d6', lash: '#3a2a5a' },
+};
+const RIG = {
+  deepseek: { head: 26, legs: 38, eyes: [[11, 17, 5, 4], [20, 16, 4, 4]], skin: '#f8dccb', lash: '#2b2a4a' },
+  claude: { seatDrop: 9, head: 30, legs: 32, eyes: [[9, 21, 2, 3], [23, 21, 2, 3]], skin: '#d97757', lash: '#1b1b2a' },
+  gemini: { head: 26, legs: 38, eyes: [[7, 16, 6, 5], [21, 16, 6, 5]], skin: '#fbe6dc', lash: '#2a2050' }, // drawn fallback
+  chatgpt: { head: 26, legs: 38, eyes: [[7, 16, 6, 5], [21, 16, 6, 5]], skin: '#fbe6dc', lash: '#3a2f4a' }, // +1 for the outline padding
+};
+// ChatGPT: hand-drawn 32x44 chibi (white-haired dragon girl, purple eyes, wings, logo hair ornament),
+// built from a left half mirrored to the right, then asymmetric bits, then a 1 px dark outline like the DeepSeek art.
+function drawnSprite(half, pal, extras) {
+  const rows = half.map((h) => h + [...h].reverse().join(''));
+  console.assert(rows.length === 44 && rows.every((r) => r.length === 32), 'bad drawn sprite');
+  const grid = rows.map((r) => [...r]);
+  for (const [x, y, str] of extras) [...str].forEach((ch, i) => { if (ch !== ' ') grid[y][x + i] = ch; });
+  const c = document.createElement('canvas'); c.width = 34; c.height = 46;
+  const cx = c.getContext('2d');
+  const solid = (x, y) => grid[y] && grid[y][x] && grid[y][x] !== '.';
+  for (let y = -1; y <= 44; y++) for (let x = -1; x <= 32; x++)
+    if (!solid(x, y) && (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1))) { cx.fillStyle = pal.outline || pal.K; cx.fillRect(x + 1, y + 1, 1, 1); }
+  grid.forEach((r, y) => r.forEach((ch, x) => { if (pal[ch]) { cx.fillStyle = pal[ch]; cx.fillRect(x + 1, y + 1, 1, 1); } }));
+  return c;
+}
+const GPT_HALF = [
+  '................',
+  '................',
+  '...oO...........',
+  '..oOO......hhHHH',
+  '..oO.....hHHHHHH',
+  '..oO...hHHHHHHHH',
+  '...oO.hHHHHHHHHH',
+  '...oOhHHHHHHHHHH',
+  '....hHHHHHHHHHHH',
+  '...hHHHHHHHHHHHH',
+  '...HHHHHHHHhHHHh',
+  '..hHHHHHHHHhHHHH',
+  '..HHHHHHHhHShHHh',
+  '..HHHHHHhSShSSSh',
+  '..HHHHhSSSSSSSSS',
+  '..HHHHSKKKKKSSSS',
+  '.SSHHSKKEEEKSSSS', // pointed ear + big eye
+  '..SSHSKEWWEKSSSS',
+  '..HHHSKEEeeKSSSS',
+  '..HHhSSKKKKSSSSS',
+  '..HHhSPPPSSSSSSS',
+  '..HHHhSSSSSSSSSm',
+  '..HHHHhSSSSSSSSS',
+  '..dHHHHhsSSSSSSS',
+  '.ddHHHHHhssSSSSs',
+  'GddHHHHHHhxDDDDD', // wings behind, white dress
+  'GGdHHHHHHxDDDDDD',
+  'GGGdHHHHxDDDDDDD',
+  'GgGdHHHSxDDDDRDD',
+  'GgGGdHHSSDDDDDRR',
+  'GggGdHHdxDDDDDDD',
+  '.GgGGdHdxDDDDDDD',
+  '.GggGdddxxDDDDDD',
+  '..GgG.ddxxDDDDDD',
+  '...GG..xxDDDDDDD',
+  '......xDxDxDxDxD',
+  '.......xDxDxDxDx',
+  '..........SSS...',
+  '..........SSS...',
+  '..........DDD...',
+  '..........DDD...',
+  '..........xxx...',
+  '..........KKK...',
+  '.........KKKK...'];
+const GPT_PAL = { H: '#f4f2f8', h: '#d3cce3', d: '#ab9fc6', O: '#c9bedd', o: '#8a7fa8', S: '#fbe6dc', s: '#efcfc4', K: '#3a2f4a',
+  E: '#8a6cc8', e: '#c9b2ff', W: '#ffffff', P: '#f5a6b8', m: '#c06a7a', D: '#ffffff', x: '#dcd6ea', G: '#b7acd0', g: '#8a7fa8',
+  R: '#2fb39a', T: '#2a2a33' };
+const GPT_EXTRAS = [
+  [15, 0, 'hH'], [14, 1, 'h  H'], [15, 2, 'HH'],                  // ahoge
+  [22, 8, ' TTT'], [22, 9, 'T W T'], [22, 10, 'TWTWT'], [22, 11, 'T W T'], [22, 12, ' TTT'], // logo knot hair ornament
+  [12, 26, 'RR'], [18, 26, 'RR'], [15, 27, 'RR'],                  // teal ribbon at the collar
+];
+bundled.chatgpt = drawnSprite(GPT_HALF, GPT_PAL, GPT_EXTRAS);
+// Gemini: blue-to-pink haired cat girl, red/gold odd eyes, sparkle hairpin, black top + purple sash, frilly skirt, tail
+const GEM_HALF = [
+  '................',
+  '................',
+  '...AA...........', // cat ears
+  '..ApA......hhHHH',
+  '..ApA....hHHHHHH',
+  '..AppA..hHHHHHHH',
+  '...AAHhHHHHHHHHH',
+  '....AhHHHHHHHHHH',
+  '....hHHHHHHHHHHH',
+  '...hHHHHHHHHHHHH',
+  '...HHHHHHHHhHHHh',
+  '..hHHHHHHHHhHHHH',
+  '..HHHHHHHhHShHHh',
+  '..HHHHHHhSShSSSh',
+  '..HHHHhSSSSSSSSS',
+  '..HHHHSKKKKKSSSS',
+  '..HHHHSKKEEEKSSS',
+  '..HHHHSKEWWEKSSS',
+  '..HHHHSKEEeeKSSS',
+  '..HHhSSSKKKKSSSS',
+  '..HHhSPPPSSSSSSS',
+  '..HHHhSSSSSSSSSm',
+  '..HHHHhSSSSSSSSS',
+  '..dHHHHhsSSSSSSS',
+  '.ddHHHHHhssSSSSs',
+  'kddHHHHHHhJTTTTT', // jacket, black top
+  'kkdHHHHHHJTTTTTT',
+  'kkkdHHHHJJTTVVVV', // purple sash
+  'kjkdHHHSJJTTTTVV',
+  'kjkkdHHSSJTTSSSS', // bare midriff
+  'kjjkdHHdJJTTSSSS',
+  '.kjkkdHdJJVVVVVV', // belt
+  '.kjjkdddJJDDDDDD', // frilly white skirt
+  '..kjk.ddJxDDDDDD',
+  '...kk..JxDxDxDxD',
+  '......xDxDxDxDxD',
+  '.......xDxDxDxDx',
+  '..........SSS...',
+  '..........SSS...',
+  '..........DDD...', // leg warmers
+  '..........DDD...',
+  '..........xxx...',
+  '..........UUU...', // platform shoes
+  '.........UUUU...'];
+const GEM_PAL = { A: '#5b5fe0', p: '#f7a8c8', H: '#6a6af0', h: '#4a4ac0', d: '#3a3590', k: '#c48be8', S: '#fbe6dc', s: '#efcfc4',
+  K: '#2a2050', E: '#e0506a', e: '#ff9aa8', W: '#ffffff', P: '#f5a6b8', m: '#c06a7a', J: '#2b2550', j: '#4a3f8a', T: '#1f1d33',
+  V: '#9b6cf0', D: '#ffffff', x: '#dcd6ea', U: '#6a4fd0', Y: '#f2c230', y: '#ffe58a', c: '#7fe0ff' };
+const GEM_EXTRAS = [
+  [21, 16, 'YYY'], [21, 17, 'Y  Y'], [21, 18, 'yyYY'],             // right eye gold (odd eyes)
+  [24, 5, ' c'], [23, 6, 'cWc'], [24, 7, ' c'],                     // sparkle hairpin
+  [15, 27, 'cc'], [15, 28, 'cc'],                                  // gem at the sash
+  [26, 36, 'HH'], [27, 37, 'HH'], [28, 38, 'kk'], [28, 39, 'kk'], [27, 40, 'kk'], // tail
+];
+bundled.gemini = drawnSprite(GEM_HALF, GEM_PAL, GEM_EXTRAS);
+// Claude: flat Clawd from the reference (wide body, side nubs, square eyes, four legs, white outline)
+bundled.claude = drawnSprite(['................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '................', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOKKOOOOOO', '....OOOOKKOOOOOO', '....OOOOKKOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', 'OOOOOOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOOOOOOOOOOO', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '....OOO..OOO....', '................', '................'], { O: '#d97757', K: '#1b1b2a', outline: '#ffffff' }, []);
+function pixelate(img, H = 44) {
+  const a = document.createElement('canvas'); a.width = img.width; a.height = img.height;
+  const ax = a.getContext('2d'); ax.drawImage(img, 0, 0);
+  const d = ax.getImageData(0, 0, a.width, a.height).data;
+  let x0 = a.width, y0 = a.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < a.height; y++) for (let x = 0; x < a.width; x++) if (d[(y * a.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  if (x1 < 0) return null;
+  // each output pixel takes the most common colour in its block (keeps outlines and eyes crisp, unlike averaging)
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, cell = h / H, ow = Math.max(1, Math.round(w / cell));
+  const o = document.createElement('canvas'); o.width = ow; o.height = H;
+  const ox = o.getContext('2d'), px = ox.createImageData(ow, H);
+  for (let oy = 0; oy < H; oy++) for (let ox2 = 0; ox2 < ow; ox2++) {
+    const votes = new Map(); let clear = 0, n = 0;
+    for (let y = Math.floor(y0 + oy * cell); y < Math.min(y1 + 1, y0 + (oy + 1) * cell); y++)
+      for (let x = Math.floor(x0 + ox2 * cell); x < Math.min(x1 + 1, x0 + (ox2 + 1) * cell); x++) {
+        const i = (y * a.width + x) * 4; n++;
+        if (d[i + 3] < 128) { clear++; continue; }
+        const q = ((d[i] >> 4) << 8) | ((d[i + 1] >> 4) << 4) | (d[i + 2] >> 4); // 4-bit buckets
+        const v = votes.get(q) || [0, 0, 0, 0]; v[0]++; v[1] += d[i]; v[2] += d[i + 1]; v[3] += d[i + 2]; votes.set(q, v);
+      }
+    if (!n || clear > n / 2) continue;
+    let best = null; for (const v of votes.values()) if (!best || v[0] > best[0]) best = v;
+    const j = (oy * ow + ox2) * 4;
+    px.data[j] = best[1] / best[0]; px.data[j + 1] = best[2] / best[0]; px.data[j + 2] = best[3] / best[0]; px.data[j + 3] = 255;
+  }
+  ox.putImageData(px, 0, 0);
+  return o;
+}
+for (const k of ['deepseek', 'claude', 'chatgpt', 'gemini', 'grok', 'robot', 'ceo']) {
+  const im = new Image(); im.onload = () => { let p = PNG_RIG[k]?.compose ? PNG_RIG[k].compose(im) : PNG_RIG[k]?.sticker ? unsticker(im, PNG_RIG[k].sticker) : pixelate(im); if (p) { if (PNG_RIG[k]?.outline) p = outlined(p, PNG_RIG[k].outline); bundled[k] = p; if (PNG_RIG[k]) RIG[k] = PNG_RIG[k]; } }; im.src = '/sprites/' + k + '.png';
+}
+// opts.flip mirrors (facing left); opts.step 1|2 lifts the left|right leg for a walk cycle
+function sprite(sp, x, y, key, opts = {}) {
+  g.save();
+  const X = Math.round(x * 2), Y = Math.round(y * 2), img = custom[key] || bundled[key];
+  g.setTransform(opts.flip ? -1 : 1, 0, 0, 1, opts.flip ? X * 2 + 24 : 0, 0);
+  if (img) {
+    const r = bundled[key] === img && !custom[key] ? 1 : Math.min(24 / img.width, 32 / img.height), w = Math.round(img.width * r), h = Math.round(img.height * r);
+    g.imageSmoothingEnabled = false;
+    const X0 = X + ((24 - w) >> 1), Y0 = Y + 32 - h + (opts.drop || 0), rig = bundled[key] === img && !custom[key] && RIG[key];
+    if (!rig) g.drawImage(img, X0, Y0 - (opts.step ? 1 : 0), w, h);
+    else { // slices: upper body (leans), torso, legs (left/right halves lift for steps)
+      const lean = opts.lean || 0, half = w >> 1, lift = (side) => (opts.step === side ? -2 : 0);
+      g.drawImage(img, 0, rig.legs, half, h - rig.legs, X0, Y0 + rig.legs + lift(1), half, h - rig.legs);
+      g.drawImage(img, half, rig.legs, w - half, h - rig.legs, X0 + half, Y0 + rig.legs + lift(2), w - half, h - rig.legs);
+      g.drawImage(img, 0, rig.head, w, rig.legs - rig.head, X0, Y0 + rig.head, w, rig.legs - rig.head);
+      if (rig.headFlip) { g.save(); g.translate(2 * X0 + w, 0); g.scale(-1, 1); g.drawImage(img, 0, 0, w, rig.head, X0, Y0 + lean, w, rig.head); g.restore(); }
+      else g.drawImage(img, 0, 0, w, rig.head, X0, Y0 + lean, w, rig.head);
+      if (opts.eyesClosed) for (const [ex, ey, ew, eh] of rig.eyes) {
+        g.fillStyle = rig.skin; g.fillRect(X0 + ex, Y0 + ey + lean, ew, eh);
+        g.fillStyle = rig.lash; g.fillRect(X0 + ex, Y0 + ey + eh - 1 + lean, ew, 1); // closed-eye line
+      }
+    }
+  } else {
+    const pal = { ...BASE, ...sp.pal };
+    const sc = sp.hi ? 1 : 2, n = sp.rows[0].length, legs = sp.hi ? 26 : 13; // hi-res sprites: 1 px per char
+    const lift = (i, j) => (j >= legs && ((opts.step === 1 && i < n / 2) || (opts.step === 2 && i >= n / 2)) ? -2 : 0);
+    g.globalAlpha = 0.45; g.fillStyle = '#2a140c'; // thin, soft 1 px outline
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]])
+      sp.rows.forEach((r, j) => { for (let i = 0; i < n; i++) if (r[i] !== '.') g.fillRect(X + i * sc + dx, Y + j * sc + dy + lift(i, j), sc, sc); });
+    g.globalAlpha = 1;
+    sp.rows.forEach((r, j) => { for (let i = 0; i < n; i++) { const c = pal[r[i]]; if (c) { g.fillStyle = c; g.fillRect(X + i * sc, Y + j * sc + lift(i, j), sc, sc); } } });
+    for (const [rows, dx, dy, extra] of (SPRITES[key] ? DETAIL[key] : DETAIL.robot) || []) {
+      const p = { ...pal, ...extra };
+      rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) { const c = r[i] !== '.' && p[r[i]]; if (c) { g.fillStyle = c; g.fillRect(X + dx + i, Y + dy + j, 1, 1); } } });
+    }
+  }
+  g.restore();
+}
+const rect = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+
+// ---------- layout: seats grow in columns; the office widens with them ----------
+const WALL = 34, ROWS = 3, SEAT_W = 50, SEAT_H = 44, DOOR_X = 66;
+let COLS = 3;
+function layout() {
+  const cols = Math.max(3, Math.ceil(agents.size / ROWS));
+  if (cols === COLS && off.width === W * 2) return;
+  COLS = cols; W = 74 + COLS * SEAT_W + 96;
+  off.width = W * 2; off.height = H * 2; fit();
+  for (const b of bodies.values()) if (b.mode === 'seat') b.path = []; // seats may not move, but stay safe
+}
+const seat = (i) => [74 + (i % COLS) * SEAT_W, 54 + Math.floor(i / COLS) * SEAT_H];
+const ceoX = () => W - 320; // CEO corner was designed at W = 320; shift it with the office
+
+// ---------- room ----------
+function room(t) {
+  for (let y = WALL; y < H; y += 10) for (let x = 0; x < W; x += 10) rect(((x + y) / 10) % 2 ? '#7a3f22' : '#8a4b2a', x, y, 10, 10);
+  rect('#5a2e1c', 0, 0, W, WALL);
+  for (let x = 0; x < W; x += 16) rect('#4c2617', x, 0, 1, WALL);
+  rect('#3a1d12', 0, WALL - 3, W, 4);
+  for (const wx of [26, 96]) { // night windows
+    rect('#c98b4a', wx - 2, 3, 34, 25); rect('#24325c', wx, 5, 30, 21); rect('#c98b4a', wx + 14, 5, 2, 21); rect('#c98b4a', wx, 15, 30, 2);
+    for (let i = 0; i < 5; i++) rect((t / 600 + i) % 3 < 1 ? '#fff' : '#9fb3ff', wx + (i * 7 + 3) % 28, 6 + (i * 5) % 18, 1, 1);
+  }
+  // the door agents leave by
+  rect('#c98b4a', DOOR_X - 2, 6, 20, 28); rect('#3a1d12', DOOR_X, 8, 16, 26);
+  if (doorOpen > 0.02) { // doorway: night outside, a strip of moonlit floor, then the panel swinging in on its left hinge
+    rect('#141b33', DOOR_X + 1, 9, 14, 25); rect('#24325c', DOOR_X + 1, 28, 14, 6);
+    for (let i = 0; i < 3; i++) rect('#9fb3ff', DOOR_X + 3 + i * 4, 12 + (i * 5) % 9, 1, 1);
+    g.globalAlpha = 0.25 * doorOpen; rect('#9fb3ff', DOOR_X - 2, 34, 20, 8); g.globalAlpha = 1; // cool light spills in
+  }
+  const pw = Math.max(2, Math.round(14 * (1 - 0.8 * doorOpen))); // panel foreshortens as it opens
+  rect('#6b3b22', DOOR_X + 1, 9, pw, 25); rect('#8a4f2c', DOOR_X + 1, 9, 1, 25);
+  if (pw > 6) { rect('#4c2617', DOOR_X + 3, 11, pw - 4, 8); rect('#4c2617', DOOR_X + 3, 22, pw - 4, 9); }
+  rect('#ffd34d', DOOR_X + Math.max(2, pw - 2), 21, 2, 2); // knob
+  rect('#2fb39a', DOOR_X + 2, 1, 12, 4); // EXIT sign
+  rect('#d4a640', W / 2 - 26, 5, 52, 18); rect('#a8322d', W / 2 - 24, 7, 48, 14); // sign
+  const bx = W - 116;
+  rect('#3a1d12', bx, 13, 60, 2); rect('#3a1d12', bx, 28, 60, 2); // shelves
+  const books = ['#c0392b', '#2f4fb3', '#2fb39a', '#d4a640', '#8e44ad', '#e67e22'];
+  for (let i = 0; i < 12; i++) { rect(books[i % 6], bx + 2 + i * 5, 5 + (i % 3), 4, 8 - (i % 3)); rect(books[(i + 3) % 6], bx + 2 + i * 5, 21 + (i % 2), 4, 7 - (i % 2)); }
+  rect('#f4e9d8', W - 36, 8, 14, 14); rect('#1b1b2a', W - 30, 10, 1, 6); rect('#1b1b2a', W - 30, 15, 5, 1); // clock
+  // cafe counter + coffee machine (left)
+  rect('#6b3b22', 4, 52, 40, 36); rect('#c98b4a', 2, 48, 44, 6); rect('#4c2617', 4, 86, 40, 3);
+  rect('#8d96a3', 10, 34, 14, 14); rect('#1b1b2a', 13, 37, 8, 4); rect('#c0392b', 20, 44, 2, 2);
+  rect('#f4f4f4', 30, 43, 5, 5); rect('#6b3b22', 31, 44, 3, 2);
+  for (let i = 0; i < 3; i++) rect('#ddd', 15 + i, 30 - ((t / 200 + i * 4) % 8), 1, 1); // steam
+  for (const [px, py] of [[4, 150], [W - 20, 150], [W - 20, 40]]) { rect('#a0522d', px, py + 10, 12, 10); rect('#3f7d3a', px - 2, py, 16, 11); rect('#5aa34f', px + 2, py - 4, 8, 8); }
+  // rug under the team
+  const rw = COLS * SEAT_W + 14;
+  rect('#c9a64a', 56, 42, rw, 136); rect('#4f6b2f', 58, 44, rw - 4, 132); rect('#5d7c37', 62, 48, rw - 12, 124);
+  // CEO corner: red carpet
+  rect('#d4a640', ceoX() + 228, 72, 84, 66); rect('#8e2b25', ceoX() + 230, 74, 80, 62);
+}
+
+// ---------- agents: status (from events) ----------
+const FIXED = ['claude', 'chatgpt', 'deepseek', 'gemini'];
+const FAMILIES = [['grok', /grok|xai/i], ['claude', /claude|anthropic|sonnet|opus|haiku/i], ['chatgpt', /gpt|openai|chatgpt|codex|(^|\/)o[1345](-|$)/i], ['deepseek', /deepseek/i], ['gemini', /gemini/i]];
+const agents = new Map(FIXED.map((f) => [f, { state: 'idle', detail: '', at: 0 }]));
+const bodies = new Map(); // where each agent physically is: { x, y, mode: seat|walk|away, path, dest, wait, flip }
+let lastOrder = null, total = 0, papers = 0;
+const ACTIVE = new Set(['working', 'thinking', 'waiting', 'error']);
+const IDLE_LEAVE_MS = 30000, SPEED = 40, HAND_MS = 900;
+
+function famOf(e) {
+  for (const [f, re] of FAMILIES) if (re.test(e.agent) || re.test(e.model || '')) return f;
+  if (e.platform === 'claude-code') return 'claude';
+  if (e.platform === 'codex') return 'chatgpt';
+  return String(e.agent).toLowerCase();
+}
+function apply(e) {
+  if (!e || typeof e.agent !== 'string') return;
+  const f = famOf(e), at = Date.parse(e.ts) || Date.now();
+  const who = e.platform === 'router' || f === e.agent ? '' : e.agent + ': ';
+  const a = { state: e.state, detail: who + (e.detail || ''), at };
+  // only a fresh finish (not replayed history) sends the agent to the CEO with paperwork
+  if (e.state === 'done' && Date.now() - at < 10000) a.handIn = true;
+  agents.set(f, a);
+  if (e.state === 'working') { total++; lastOrder = { f, text: e.task || e.detail || '' }; }
+}
+function shown(a, now) { return a.state === 'done' && now - a.at > 8000 ? 'idle' : a.state; }
+
+// ---------- pathfinding: A* over the floor, then straightened where the way is clear ----------
+// Plans run on the feet (sprite x+6, y+15). Desks, the counter, plants, the CEO desk and the wall are blocked,
+// padded by half a body so sprites never clip furniture. The door gap in the wall is open.
+const DOOR_SPOT = [DOOR_X + 2, 20];
+const line = []; // agents queuing to hand in paperwork, front first
+const slot = (k) => [W - 90, 90 + 16 * Math.min(Math.max(k, 0), 4)]; // the line runs down the carpet edge
+const CELL = 2, FX = 6, FY = 15;
+let navKey = '', nav = null, NW = 0, NH = 0;
+function navGrid() {
+  const key = W + '|' + COLS + '|' + agents.size;
+  if (key === navKey) return nav;
+  navKey = key; NW = Math.ceil(W / CELL); NH = Math.ceil(H / CELL); nav = new Uint8Array(NW * NH);
+  const X = ceoX(), boxes = [
+    [0, 0, W, 36], [0, 44, 48, 92],                                   // wall, coffee counter
+    [2, 146, 18, 172], [W - 22, 146, W - 6, 172], [W - 22, 36, W - 6, 62], // plants
+    [X + 248, 94, X + 300, 114], [X + 264, 70, X + 284, 96],          // CEO desk and chair
+    [0, H - 2, W, H],
+  ];
+  for (let i = 0; i < agents.size; i++) { const [sx, sy] = seat(i); boxes.push([sx - 5, sy + 13, sx + 17, sy + 25]); }
+  for (const [x0, y0, x1, y1] of boxes)
+    for (let y = Math.max(0, Math.floor((y0 - 2) / CELL)); y < Math.min(NH, Math.ceil((y1 + 2) / CELL)); y++)
+      for (let x = Math.max(0, Math.floor((x0 - 5) / CELL)); x < Math.min(NW, Math.ceil((x1 + 5) / CELL)); x++) nav[y * NW + x] = 1;
+  for (let y = Math.floor(18 / CELL); y < Math.ceil(40 / CELL); y++) // the doorway
+    for (let x = Math.floor((DOOR_X + 3) / CELL); x < Math.ceil((DOOR_X + 13) / CELL); x++) nav[y * NW + x] = 0;
+  return nav;
+}
+const free = (cx, cy) => cx >= 0 && cy >= 0 && cx < NW && cy < NH && !nav[cy * NW + cx];
+function nearestFree(cx, cy) { // start/goal may sit inside furniture (a seat is behind its desk): step out to the closest open cell
+  if (free(cx, cy)) return [cx, cy];
+  for (let r = 1; r < 30; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
+    if ((Math.abs(dx) === r || Math.abs(dy) === r) && free(cx + dx, cy + dy)) return [cx + dx, cy + dy];
+  return [cx, cy];
+}
+function clearLine(ax, ay, bx, by) { // walkable straight segment between two cell centres?
+  const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2);
+  for (let i = 0; i <= n; i++) { const t = n ? i / n : 0; if (!free(Math.round(ax + (bx - ax) * t), Math.round(ay + (by - ay) * t))) return false; }
+  return true;
+}
+// from/to are sprite positions; returns waypoints (sprite positions) after `from`, ending exactly at `to`
+function findPath(from, to) {
+  navGrid();
+  const cell = ([x, y]) => [Math.round((x + FX) / CELL), Math.round((y + FY) / CELL)];
+  const [sx, sy] = nearestFree(...cell(from)), [gx, gy] = nearestFree(...cell(to));
+  const N = NW * NH, g = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+  const heap = []; // binary min-heap of [f, idx]
+  const push = (f, i) => { heap.push([f, i]); let k = heap.length - 1; while (k) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r2 = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r2 < heap.length && heap[r2][0] < heap[m][0]) m = r2; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const h = (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
+  const start = sy * NW + sx, goal = gy * NW + gx;
+  g[start] = 0; push(h(sx, sy), start);
+  while (heap.length) {
+    const [, cur] = pop(); if (done[cur]) continue; done[cur] = 1; if (cur === goal) break;
+    const cx = cur % NW, cy = (cur / NW) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue; const nx = cx + dx, ny = cy + dy;
+      if (!free(nx, ny) || (dx && dy && (!free(cx + dx, cy) || !free(cx, cy + dy)))) continue; // no corner cutting
+      const ni = ny * NW + nx, ng = g[cur] + (dx && dy ? 1.414 : 1);
+      if (ng < g[ni]) { g[ni] = ng; came[ni] = cur; push(ng + h(nx, ny), ni); }
+    }
+  }
+  let cells = [];
+  if (came[goal] >= 0 || goal === start) for (let i = goal; i >= 0; i = i === start ? -1 : came[i]) cells.push([i % NW, (i / NW) | 0]);
+  else cells = [[gx, gy], [sx, sy]]; // unreachable: walk straight rather than freeze
+  cells.reverse();
+  const pts = [cells[0]]; // string-pull: keep only corners we can't see past
+  for (let i = 1; i < cells.length; i++) if (i === cells.length - 1 || !clearLine(...pts[pts.length - 1], ...cells[i + 1])) pts.push(cells[i]);
+  const out = pts.map(([x, y]) => [x * CELL - FX, y * CELL - FY]);
+  out.push(to);
+  return out.filter((p, i) => i === out.length - 1 || Math.hypot(p[0] - from[0], p[1] - from[1]) > 1);
+}
+
+function updateBody(f, a, i, now, dt) {
+  const [sx, sy] = seat(i), st = shown(a, now);
+  let b = bodies.get(f);
+  if (!b) { // first sight: long-idle agents start out of the office
+    b = { x: sx, y: sy, mode: 'seat', path: [], dest: '', wait: 0, flip: false };
+    if (!ACTIVE.has(st) && now - a.at > IDLE_LEAVE_MS) { b.mode = 'away'; [b.x, b.y] = DOOR_SPOT; }
+    bodies.set(f, b);
+  }
+  if (b.mode === 'seat') {
+    b.x = sx; b.y = sy;
+    if (a.handIn) { a.handIn = false; b.mode = 'walk'; b.dest = 'ceo'; line.push(f); b.slotK = line.indexOf(f); b.path = findPath([b.x, b.y], slot(b.slotK)); }
+    else if (!ACTIVE.has(st) && now - a.at > IDLE_LEAVE_MS) { b.mode = 'walk'; b.dest = 'door'; b.path = findPath([b.x, b.y], DOOR_SPOT); }
+  } else if (b.mode === 'away') {
+    if (ACTIVE.has(st) || a.handIn) { b.mode = 'walk'; b.dest = 'seat'; [b.x, b.y] = DOOR_SPOT; b.path = findPath(DOOR_SPOT, seat(i)); }
+  }
+  if (b.mode !== 'walk') return b;
+  if (b.wait > now) return b;
+  if (b.dest === 'ceo') {
+    b.paper = true;
+    // our place in the line moved up: re-plan to the new spot
+    const k = line.indexOf(f);
+    if (k !== b.slotK) { b.slotK = k; b.path = findPath([b.x, b.y], slot(k)); }
+    if (!b.path.length && b.handing) { // finished handing in: leave the line and walk back
+      papers++; b.handing = false; b.paper = false; line.splice(k, 1);
+      b.dest = 'seat'; b.path = findPath([b.x, b.y], seat(i)); return b;
+    }
+    if (!b.path.length) { b.flip = false; if (k === 0) { b.handing = true; b.wait = now + HAND_MS; } return b; }
+  }
+  if (!b.path.length) { // arrived
+    if (b.dest === 'door') b.mode = 'away';
+    else b.mode = 'seat';
+    return b;
+  }
+  // a new task while heading out: turn round and go back to the desk
+  if (b.dest === 'door' && ACTIVE.has(st)) { b.dest = 'seat'; b.path = findPath([b.x, b.y], seat(i)); }
+  let step = SPEED * dt;
+  while (step > 0 && b.path.length) {
+    const [tx, ty] = b.path[0], dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy);
+    if (Math.abs(dx) > 0.01) b.flip = dx < 0;
+    if (d <= step) { b.x = tx; b.y = ty; b.path.shift(); step -= d; } else { b.x += dx / d * step; b.y += dy / d * step; step = 0; }
+  }
+  return b;
+}
+const where = (b) => b.mode === 'away' ? 'out of office' : b.mode === 'walk' ? ({ ceo: 'handing in', door: 'heading out', seat: 'walking back' }[b.dest]) : null;
+
+// ---------- drawing (everything depth-sorted by its base line, so desks hide anyone behind them) ----------
+const HAND = { claude: '#d97757', robot: '#9aa4b1' };
+const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7) >>> 0;
+function drawDesk(f, a, st, sx, sy, t, b) {
+  rect('#a0622f', sx - 5, sy + 13, 22, 4); rect('#6b3b22', sx - 5, sy + 17, 22, 5); rect('#4c2617', sx - 4, sy + 22, 2, 3); rect('#4c2617', sx + 14, sy + 22, 2, 3);
+  const here = b.mode === 'seat';
+  const glow = here ? ({ working: '#5ad1ff', thinking: '#b48cff', waiting: '#ffd34d', error: '#ff5a5a', done: '#6fe08a' }[st] || '#555') : '#2a2a33';
+  rect('#3b3f4a', sx - 4, sy + 9, 6, 5); rect(glow, sx - 2, sy + 11, 2, 1); // laptop
+  const sip = here && st === 'idle' && (t + hash(f) % 6000) % 6000 < 900; // idle: sip coffee every few seconds
+  if (!sip) rect('#f4f4f4', sx + 14, sy + 11, 3, 3);
+  if (!here) return;
+  const hand = HAND[SPRITES[f] ? f : 'robot'] || BASE.S;
+  if (st === 'working') { // writing: a sheet fills with scribbled lines, pen hand follows the newest line
+    const p = ((t + hash(f) % 3000) % 4500) / 4500 * 3; // 3 lines per sheet, then a fresh sheet
+    rect('#e8e0d0', sx + 1.5, sy + 12.5, 10, 4); rect('#fffaf0', sx + 1, sy + 12, 10, 4); // sheet + shadow
+    let px = sx + 2, py = sy + 13;
+    for (let j = 0; j < 3; j++) {
+      const w = Math.max(0, Math.min(1, p - j)) * 8;
+      for (let x = 0; x < w; x += 0.5) rect('#6a6f80', sx + 2 + x, sy + 13 + j + (Math.floor(x * 2) % 3 === 1 ? -0.5 : 0) * 0.5, 0.5, 0.5);
+      if (p > j) { px = sx + 2 + w; py = sy + 13 + j; }
+    }
+    const wob = Math.floor(t / 80) % 2 * 0.5;
+    rect('#2a2a33', px + 0.5, py - 2.5 + wob, 0.5, 2.5); // pen
+    rect(hand, px, py - 1 + wob, 2, 1.5);                // writing hand
+    rect(hand, sx + 9.5, sy + 14, 2, 1.5);               // other hand holds the sheet
+  } else if (st !== 'idle' || !sip) { rect(hand, sx + 2, sy + 12, 2, 2); rect(hand, sx + 8, sy + 12, 2, 2); }
+  if (sip) { rect(hand, sx + 9, sy + 8, 2, 2); rect('#f4f4f4', sx + 9, sy + 6, 3, 3); }
+}
+function drawSeated(f, st, sx, sy, t) {
+  const ph = t + hash(f) % 4000;
+  const blink = ph % 3600 < 140;
+  let bob = 0, lean = 0, flip = false, eyesClosed = blink;
+  if (st === 'working') { lean = 1 + (Math.floor(ph / 380) % 3 === 0 ? 1 : 0); bob = 0; }        // head down over the paper, small nods with the pen
+  else if (st === 'thinking') { bob = Math.floor(t / 600) % 2; lean = ph % 2400 < 1200 ? 0 : 1; /* never negative: a lifted head opens a gap at the neck */ }
+  else if (st === 'idle') { eyesClosed = true; lean = 2 + Math.floor(ph / 1500) % 2; bob = Math.floor(ph / 1500) % 2; } // snoozing: slow breaths
+  else bob = Math.floor(ph / 1200) % 2;
+  if (!RIG[f] && st === 'idle') { eyesClosed = false; flip = ph % 9000 > 6500; } // drawn sprites can't close eyes: glance around instead
+  sprite(SPRITES[f] || SPRITES.robot, sx, sy + bob, f, { flip, lean, eyesClosed, drop: RIG[f]?.seatDrop }); // seatDrop: long-legged sprites sit lower so the desk hides their legs
+  const iy = sy - 6 - (Math.floor(t / 300) % 2), glow = COLORS[st];
+  if (st === 'thinking') for (let i = 0; i < 3; i++) rect(i <= Math.floor(t / 300) % 3 ? '#fff' : '#777', sx + 3 + i * 3, iy + 2, 2, 2);
+  if (st === 'waiting' || st === 'error') { rect(glow, sx + 5, iy - 2, 2, 5); rect(glow, sx + 5, iy + 4, 2, 2); }
+  if (st === 'done') { rect('#6fe08a', sx + 3, iy + 2, 2, 2); rect('#6fe08a', sx + 5, iy + 3, 2, 2); rect('#6fe08a', sx + 7, iy + 1, 2, 2); rect('#6fe08a', sx + 9, iy - 1, 2, 2); }
+  if (st === 'idle') for (let k = 0; k < 2; k++) { // two Zs drift up and fade
+    const p = ((ph / 2200) + k / 2) % 1, zx = sx + 10 + p * 5, zy = iy + 2 - p * 8, z = k ? 0.5 : 1;
+    g.globalAlpha = 1 - p;
+    for (const [dx, dy] of [[0, 0], [1, 0], [2, 0], [1.5, 0.5], [1, 1], [0.5, 1.5], [0, 2], [1, 2], [2, 2]]) rect('#cfd8ff', zx + dx * z, zy + dy * z, 0.5 * z + 0.5, 0.5 * z + 0.5);
+    g.globalAlpha = 1;
+  }
+}
+function drawWalker(f, b, t) {
+  const now = Date.now(), moving = b.wait <= now && b.path.length > 0;
+  const stepN = moving ? 1 + (Math.floor(t / 160) % 2) : 0;
+  const x = b.x, y = b.y - (moving && stepN === 1 ? 1 : 0);
+  const handing = b.handing && b.wait > now, p = handing ? 1 - (b.wait - now) / HAND_MS : 0; // 0..1 through the hand-in
+  const lean = handing ? (p < 0.7 ? 2 : 1) : moving ? stepN - 1 : 0;                     // bow while handing over; bounce while walking
+  rect('rgba(0,0,0,.25)', Math.round(b.x) + 2, Math.round(b.y) + 15, 8, 2); // shadow
+  sprite(SPRITES[f] || SPRITES.robot, x, y, f, { flip: b.flip !== !!RIG[f]?.facesLeft, step: stepN, /* art drawn facing left mirrors the other way */ lean, eyesClosed: handing && p > 0.2 && p < 0.6 });
+  if (!b.paper) return;
+  let px = Math.round(x) + (b.flip ? -3 : 10), py = Math.round(y) + 9;
+  if (handing) { const tx = ceoX() + 279, ty = 90; px += (tx - px) * Math.min(1, p * 1.4); py += (ty - py) * Math.min(1, p * 1.4) - Math.sin(Math.min(1, p * 1.4) * Math.PI) * 3; }
+  rect('#fffaf0', px, py, 5, 6); rect('#9aa4b1', px + 1, py + 1, 3, 1); rect('#9aa4b1', px + 1, py + 3, 3, 1);
+}
+function drawCeoBack(t) {
+  const X = ceoX();
+  rect('#d4a640', X + 264, 70, 20, 26); rect('#8e2b25', X + 266, 72, 16, 22); // chair back
+  sprite(SPRITES.ceo, X + 268, 82 + (Math.floor(t / 900) % 2), 'ceo');
+}
+function drawCeoDesk() {
+  const X = ceoX();
+  rect('#4a1f14', X + 248, 96, 52, 6); rect('#2e130c', X + 248, 102, 52, 12); rect('#d4a640', X + 248, 96, 52, 1); rect('#d4a640', X + 266, 104, 16, 5);
+  rect('#3b3f4a', X + 252, 89, 10, 7); rect('#5ad1ff', X + 253, 90, 8, 5); // monitor
+  rect('#ffd34d', X + 290, 88, 6, 1); rect('#c98b4a', X + 292, 89, 2, 7); // desk lamp
+  for (let k = 0; k < Math.min(papers, 10); k++) rect(k % 2 ? '#fffaf0' : '#e8e0d0', X + 280, 95 - k, 7, 1); // handed-in paperwork
+}
+
+function light() {
+  g.globalCompositeOperation = 'lighter';
+  for (const [x, y, r] of [[24, 44, 40], [ceoX() + 292, 92, 46], [W / 2, 14, 60]]) {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,170,80,.22)'); gr.addColorStop(1, 'rgba(255,170,80,0)');
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.globalCompositeOperation = 'source-over';
+  const v = g.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, Math.max(200, W * 0.6)); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.5)');
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+}
+
+// ---------- text, drawn at screen scale so it stays crisp ----------
+function text(s, x, y, color = '#fff', size = 3) {
+  ctx.font = `bold ${size * S}px monospace`; ctx.textAlign = 'center';
+  ctx.lineWidth = Math.max(1, S * 0.6); ctx.strokeStyle = '#120b08'; ctx.strokeText(s, x * S, y * S);
+  ctx.fillStyle = color; ctx.fillText(s, x * S, y * S);
+}
+function bubble(s, x, y) {
+  if (!s) return;
+  ctx.font = `bold ${2.6 * S}px monospace`;
+  s = s.length > 26 ? s.slice(0, 25) + '…' : s;
+  const w = ctx.measureText(s).width + 8, h = 4 * S, X = Math.min(Math.max(x * S - w / 2, 2), cv.width - w - 2), Y = y * S - h;
+  ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#120b08'; ctx.lineWidth = 2;
+  ctx.fillRect(X, Y, w, h); ctx.strokeRect(X, Y, w, h);
+  ctx.fillStyle = '#2a1a12'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(s, X + 4, Y + h / 2); ctx.textBaseline = 'alphabetic';
+}
+const COLORS = { working: '#5ad1ff', thinking: '#b48cff', waiting: '#ffd34d', error: '#ff5a5a', done: '#6fe08a', idle: '#aaa' };
+
+let lastT = 0, doorOpen = 0;
+function frame(t) {
+  const now = Date.now(), dt = Math.min(0.1, (t - lastT) / 1000 || 0); lastT = t;
+  layout();
+  // door opens while anyone walks near it, then swings shut
+  const near = [...bodies.values()].some((b) => b.mode === 'walk' && Math.hypot(b.x - DOOR_SPOT[0], b.y - DOOR_SPOT[1]) < 22);
+  doorOpen += ((near ? 1 : 0) - doorOpen) * Math.min(1, dt * 5);
+  g.setTransform(2, 0, 0, 2, 0, 0);
+  room(t);
+  const draws = [], labels = []; // [baseY, fn]
+  [...agents].forEach(([f, a], i) => {
+    const [sx, sy] = seat(i), st = shown(a, now), b = updateBody(f, a, i, now, dt);
+    draws.push([sy + 25, () => drawDesk(f, a, st, sx, sy, t, b)]);
+    if (b.mode === 'seat') draws.push([sy + 16, () => drawSeated(f, st, sx, sy, t)]);
+    else if (b.mode === 'walk') draws.push([b.y + 16, () => drawWalker(f, b, t)]);
+    labels.push([f, a, sx, sy, st, b]);
+  });
+  draws.push([98, () => drawCeoBack(t)], [114, drawCeoDesk]);
+  draws.sort((m, n) => m[0] - n[0]).forEach(([, fn]) => fn());
+  light();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, 0, 0, W * S, H * S);
+  text('AI OFFICE', W / 2, 17, '#ffe9a8', 4);
+  for (const [f, a, sx, sy, st, b] of labels) {
+    const w = where(b);
+    text((SPRITES[f]?.name || f.toUpperCase()), sx + 6, sy + 30, w === 'out of office' ? '#888' : '#fff');
+    text(w || st, sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
+    if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 8);
+  }
+  const cx = ceoX() + 274;
+  text('CEO (you)', cx, 122, '#ffe9a8');
+  text(`${total} routed · ${papers} handed in`, cx, 128, '#ddd', 2.4);
+  if (lastOrder) bubble('→ ' + (SPRITES[lastOrder.f]?.name || lastOrder.f) + ': ' + lastOrder.text, cx, 66);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- team drop-down: who is working, who is resting ----------
+const teamBtn = document.getElementById('teamBtn'), roster = document.getElementById('roster');
+function renderRoster() {
+  const now = Date.now(), work = [], rest = [];
+  for (const [f, a] of agents) {
+    const st = shown(a, now), b = bodies.get(f), w = b && where(b);
+    (ACTIVE.has(st) ? work : rest).push({ name: SPRITES[f]?.name || f, st: w || st, detail: ACTIVE.has(st) ? a.detail : '' });
+  }
+  roster.textContent = '';
+  for (const [title, list] of [[`Working (${work.length})`, work], [`Resting (${rest.length})`, rest]]) {
+    const h = document.createElement('h4'); h.textContent = title; roster.append(h);
+    if (!list.length) { const p = document.createElement('p'); p.className = 'none'; p.textContent = 'Nobody'; roster.append(p); }
+    for (const it of list) {
+      const row = document.createElement('div'); row.className = 'who';
+      const dot = document.createElement('i'); dot.style.background = COLORS[it.st] || '#e0c080';
+      const n = document.createElement('b'); n.textContent = it.name;
+      const s = document.createElement('span'); s.textContent = it.st + (it.detail ? ' · ' + it.detail : '');
+      row.append(dot, n, s); roster.append(row);
+    }
+  }
+}
+teamBtn.onclick = () => { roster.hidden = !roster.hidden; teamBtn.setAttribute('aria-expanded', String(!roster.hidden)); if (!roster.hidden) renderRoster(); };
+setInterval(() => { if (!roster.hidden) renderRoster(); }, 500);
+
+// ---------- custom sprites (PNG upload, kept in localStorage) ----------
+function loadCustom(k) {
+  const d = localStorage.getItem('sprite:' + k);
+  if (!d) { delete custom[k]; return; }
+  const im = new Image(); im.onload = () => { custom[k] = im; }; im.src = d;
+}
+async function upload(k, file) {
+  if (!file || !/^image\/png$/.test(file.type)) { alert('Please choose a PNG file.'); return; }
+  const bmp = await createImageBitmap(file);
+  const r = Math.min(1, 96 / bmp.width, 128 / bmp.height); // shrink big images so they fit in localStorage
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * r)); c.height = Math.max(1, Math.round(bmp.height * r));
+  const cx = c.getContext('2d'); cx.imageSmoothingEnabled = false; cx.drawImage(bmp, 0, 0, c.width, c.height);
+  try { localStorage.setItem('sprite:' + k, c.toDataURL('image/png')); } catch { alert('Could not save: browser storage is full.'); return; }
+  loadCustom(k); renderList();
+}
+function renderList() {
+  const list = document.getElementById('list'); list.textContent = '';
+  for (const k of [...agents.keys(), 'ceo']) {
+    const row = document.createElement('div'); row.className = 'row';
+    const name = document.createElement('b'); name.textContent = SPRITES[k]?.name || k;
+    const img = document.createElement('img'); img.alt = ''; const d = localStorage.getItem('sprite:' + k); if (d) img.src = d; else img.style.visibility = 'hidden';
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png'; inp.setAttribute('aria-label', `Sprite for ${name.textContent}`);
+    inp.onchange = () => upload(k, inp.files[0]);
+    const reset = document.createElement('button'); reset.type = 'button'; reset.textContent = 'Reset';
+    reset.onclick = () => { localStorage.removeItem('sprite:' + k); loadCustom(k); renderList(); };
+    row.append(name, img, inp, reset); list.append(row);
+  }
+}
+for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('sprite:')) loadCustom(k.slice(7)); }
+document.getElementById('gear').onclick = () => { renderList(); document.getElementById('dlg').showModal(); };
+
+// ---------- live data ----------
+const conn = document.getElementById('conn');
+if (new URLSearchParams(location.search).has('demo')) {
+  conn.textContent = 'demo';
+  const tasks = ['Refactor auth module', 'Summarise PDF', 'Write unit tests', 'Translate docs to FR', 'Fix CSS overflow', 'Plan Q3 roadmap', 'Explain regex'];
+  const fams = [...FIXED, 'qwen'];
+  setInterval(() => {
+    const f = fams[Math.floor(Math.random() * fams.length)], task = tasks[Math.floor(Math.random() * tasks.length)];
+    const state = ['working', 'working', 'thinking', 'waiting', 'done', 'error'][Math.floor(Math.random() * 6)];
+    apply({ agent: f, platform: 'router', state, detail: task, task, ts: new Date().toISOString() });
+  }, 1400);
+} else {
+  const es = new EventSource('/events');
+  es.onopen = () => { conn.textContent = 'live'; };
+  es.onerror = () => { conn.textContent = 'reconnecting…'; };
+  es.addEventListener('reset', () => { bodies.clear(); line.length = 0; for (const f of [...agents.keys()]) FIXED.includes(f) ? agents.set(f, { state: 'idle', detail: '', at: 0 }) : agents.delete(f); total = 0; lastOrder = null; });
+  es.addEventListener('replay', (m) => { try { JSON.parse(m.data).forEach(apply); } catch {} });
+  es.addEventListener('agent-event', (m) => { try { apply(JSON.parse(m.data)); } catch {} });
+}
+</script>
+</body></html>
