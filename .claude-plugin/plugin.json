@@ -1,5 +1,5 @@
 {
   "name": "pixel-ai-office",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A cozy pixel-art office that shows your Claude Code subagents at work, and optionally the AI models behind your router, with you in the CEO seat."
 }

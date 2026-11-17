@@ -9,6 +9,8 @@ canvas{display:block;margin:0 auto;image-rendering:pixelated}
 #zoom{position:fixed;top:6px;left:10px;z-index:2;display:flex}
 #tools{position:fixed;top:6px;right:10px;z-index:2;display:flex;gap:2px}
 #tools > button,#zoom button{display:flex;align-items:center;gap:6px;cursor:pointer}
+@media (max-width: 820px){#tools > button > span{display:none}#tools > button{padding:0 7px}#bar{font-size:11px}}
+@media (max-width: 420px){#bar .dot + #conn{display:none}}
 .ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .px{width:14px;height:14px;image-rendering:pixelated;flex:none}
 .caret{opacity:.55;font-size:9px}
@@ -1195,15 +1197,16 @@ function light() {
 }
 
 // ---------- text, drawn at screen scale so it stays crisp ----------
-function text(s, x, y, color = '#fff', size = 3) {
-  ctx.font = `bold ${size * S}px monospace`; ctx.textAlign = 'center';
+function fitText(s, maxW) { if (!maxW) return s; const m = maxW * S; if (ctx.measureText(s).width <= m) return s; while (s.length > 1 && ctx.measureText(s + '…').width > m) s = s.slice(0, -1); return s + '…'; }
+function text(s, x, y, color = '#fff', size = 3, maxW = 0) {
+  ctx.font = `bold ${size * S}px monospace`; ctx.textAlign = 'center'; s = fitText(s, maxW);
   ctx.lineWidth = Math.max(1, S * 0.6); ctx.strokeStyle = '#120b08'; ctx.strokeText(s, x * S, y * S);
   ctx.fillStyle = color; ctx.fillText(s, x * S, y * S);
 }
-function bubble(s, x, y) {
+function bubble(s, x, y, maxW = 0) {
   if (!s) return;
   ctx.font = `bold ${2.6 * S}px monospace`;
-  s = s.length > 26 ? s.slice(0, 25) + '…' : s;
+  s = fitText(s.length > 26 ? s.slice(0, 25) + '…' : s, maxW ? maxW - 8 / S : 0);
   const w = ctx.measureText(s).width + 8, h = 4 * S, X = Math.min(Math.max(x * S - w / 2, 2), cv.width - w - 2), Y = y * S - h;
   ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#120b08'; ctx.lineWidth = 2;
   ctx.fillRect(X, Y, w, h); ctx.strokeRect(X, Y, w, h);
@@ -1237,10 +1240,10 @@ function frame(t) {
   text(tr('title'), W / 2, 17, '#ffe9a8', 4);
   for (const [f, a, sx, sy, st, b] of labels) {
     const w = where(b);
-    text(nameOf(f) + ' · ' + roleOf(f), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff', 2.6);
-    text((w ? L().where[w] : L().st[st] || st) + (projectOf(f) ? ' · ' + projectOf(f) : ''), sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
-    if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 8);
+    text(nameOf(f) + ' · ' + roleOf(f), sx + 6, sy + 29, w === 'away' ? '#888' : '#fff', 2.4, SEAT_W - 4);
+    text((w ? L().where[w] : L().st[st] || st) + (projectOf(f) ? ' · ' + projectOf(f) : ''), sx + 6, sy + 32.5, w ? '#e0c080' : COLORS[st] || '#fff', 2.2, SEAT_W - 4);
   }
+  for (const [f, a, sx, sy, st, b] of labels) if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 6, SEAT_W - 2);
   const cx = ceoX() + 274;
   text(tr('ceo'), cx, 122, '#ffe9a8');
   text(tr('stats', total, papers), cx, 128, '#ddd', 2.4);
@@ -1346,6 +1349,8 @@ function applyLang() {
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-label]')) el.setAttribute('aria-label', tr(el.dataset.i18nLabel));
   document.getElementById('langName').textContent = L().name;
+  for (const [id, k] of [['teamBtn', 'team'], ['gear', 'sprites'], ['retroBtn', 'retro']]) { const el = document.getElementById(id); el.setAttribute('aria-label', tr(k)); el.title = tr(k); }
+  langBtn.title = tr('language');
   langBtn.setAttribute('aria-label', tr('language') + ': ' + L().name);
   setConn(connKey);
   langMenu.textContent = '';
