@@ -394,7 +394,7 @@ const DETAIL = {
 };
 SPRITES.grok = { ...SPRITES.robot, name: 'Grok' }; // drawn fallback; real art is sprites/grok.png
 const DEFAULT_ROLE = { claude: 'qa', chatgpt: 'backend', deepseek: 'data', gemini: 'research', grok: 'social' };
-const roleOf = (f) => localStorage.getItem('role:' + f) || L().roles?.[DEFAULT_ROLE[f] || 'assistant'] || LANGS.en.roles[DEFAULT_ROLE[f] || 'assistant'];
+const roleOf = (f) => localStorage.getItem('role:' + f) || (isRouter(f) ? L().roles?.[DEFAULT_ROLE[f] || 'assistant'] || LANGS.en.roles[DEFAULT_ROLE[f] || 'assistant'] : TEAM[f] || pretty(f));
 const custom = {}; // uploaded PNGs, by agent key
 // Bundled art in agentboard/sprites/<key>.png: cropped to the character, then shrunk into the 24x32 sprite box
 // with area averaging, and alpha snapped to on/off so it reads as chunky pixel art.
@@ -939,21 +939,31 @@ function room(t) {
 // ---------- agents: status (from events) ----------
 const FIXED = ['claude', 'chatgpt', 'deepseek', 'gemini'];
 const FAMILIES = [['grok', /grok|xai/i], ['claude', /claude|anthropic|sonnet|opus|haiku/i], ['chatgpt', /gpt|openai|chatgpt|codex|(^|\/)o[1345](-|$)/i], ['deepseek', /deepseek/i], ['gemini', /gemini/i]];
-const agents = new Map(FIXED.map((f) => [f, { state: 'idle', detail: '', at: 0 }]));
+const agents = new Map(); // desks appear as agents show up: router models and/or Claude Code / Codex (sub)agents
+const META = new Map();   // agent key -> platform: 'router' | 'claude-code' | 'codex' | ...
+let TEAM = {};            // team.json titles, used as roles for subagents
+fetch('/team.json').then((r) => r.ok ? r.json() : null).then((j) => { for (const a of j?.agents || []) TEAM[a.id] = a.displayName || a.name; }).catch(() => {});
+const isRouter = (f) => (META.get(f) || 'router') === 'router';
+// which character art an agent uses: router models by family; Claude Code subagents are Claude; Codex ones the ChatGPT girl
+const skinOf = (f) => isRouter(f) ? (SPRITES[f] ? f : 'robot') : META.get(f) === 'codex' ? 'chatgpt' : META.get(f) === 'claude-code' ? 'claude' : 'robot';
+const skinKey = (f) => custom[f] ? f : skinOf(f); // an uploaded PNG for this exact agent wins
+const pretty = (id) => String(id).replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+const nameOf = (f) => isRouter(f) ? (SPRITES[f]?.name || pretty(f)) : META.get(f) === 'codex' ? 'Codex' : META.get(f) === 'claude-code' ? 'Claude' : pretty(f);
 const bodies = new Map(); // where each agent physically is: { x, y, mode: seat|walk|away, path, dest, wait, flip }
 let lastOrder = null, total = 0, papers = 0;
 const ACTIVE = new Set(['working', 'thinking', 'waiting', 'error']);
 const IDLE_LEAVE_MS = 30000, SPEED = 40, HAND_MS = 900;
 
 function famOf(e) {
+  if (e.platform && e.platform !== 'router') return String(e.agent).toLowerCase(); // no router: every (sub)agent gets its own desk
   for (const [f, re] of FAMILIES) if (re.test(e.agent) || re.test(e.model || '')) return f;
-  if (e.platform === 'claude-code') return 'claude';
-  if (e.platform === 'codex') return 'chatgpt';
   return String(e.agent).toLowerCase();
 }
 function apply(e) {
   if (!e || typeof e.agent !== 'string') return;
   const f = famOf(e), at = Date.parse(e.ts) || Date.now();
+  if (!agents.has(f) && Date.now() - at > 2 * 3600e3) return; // old history: don't open desks for agents long gone
+  META.set(f, e.platform && e.platform !== 'router' ? e.platform : 'router');
   const who = e.platform === 'router' || f === e.agent ? '' : e.agent + ': ';
   const a = { state: e.state, detail: who + (e.detail || ''), at };
   // only a fresh finish (not replayed history) sends the agent to the CEO with paperwork
@@ -1090,7 +1100,7 @@ function drawDesk(f, a, st, sx, sy, t, b) {
   const sip = here && st === 'idle' && (t + hash(f) % 6000) % 6000 < 900; // idle: sip coffee every few seconds
   if (!sip) rect('#f4f4f4', sx + 14, sy + 11, 3, 3);
   if (!here) return;
-  const hand = HAND[SPRITES[f] ? f : 'robot'] || BASE.S;
+  const sk = skinOf(f), hand = HAND[sk] || BASE.S;
   if (st === 'working') { // writing: a sheet fills with scribbled lines, pen hand follows the newest line
     const p = ((t + hash(f) % 3000) % 4500) / 4500 * 3; // 3 lines per sheet, then a fresh sheet
     rect('#e8e0d0', sx + 1.5, sy + 12.5, 10, 4); rect('#fffaf0', sx + 1, sy + 12, 10, 4); // sheet + shadow
@@ -1115,8 +1125,9 @@ function drawSeated(f, st, sx, sy, t) {
   else if (st === 'thinking') { bob = Math.floor(t / 600) % 2; lean = ph % 2400 < 1200 ? 0 : 1; /* never negative: a lifted head opens a gap at the neck */ }
   else if (st === 'idle') { eyesClosed = true; lean = 2 + Math.floor(ph / 1500) % 2; bob = Math.floor(ph / 1500) % 2; } // snoozing: slow breaths
   else bob = Math.floor(ph / 1200) % 2;
-  if (!RIG[f] && st === 'idle') { eyesClosed = false; flip = ph % 9000 > 6500; } // drawn sprites can't close eyes: glance around instead
-  sprite(SPRITES[f] || SPRITES.robot, sx, sy + bob, f, { flip, lean, eyesClosed, drop: RIG[f]?.seatDrop }); // seatDrop: long-legged sprites sit lower so the desk hides their legs
+  const k = skinKey(f);
+  if (!RIG[k] && st === 'idle') { eyesClosed = false; flip = ph % 9000 > 6500; } // drawn sprites can't close eyes: glance around instead
+  sprite(SPRITES[k] || SPRITES.robot, sx, sy + bob, k, { flip, lean, eyesClosed, drop: RIG[k]?.seatDrop }); // seatDrop: long-legged sprites sit lower so the desk hides their legs
   const iy = sy - 6 - (Math.floor(t / 300) % 2), glow = COLORS[st];
   if (st === 'thinking') for (let i = 0; i < 3; i++) rect(i <= Math.floor(t / 300) % 3 ? '#fff' : '#777', sx + 3 + i * 3, iy + 2, 2, 2);
   if (st === 'waiting' || st === 'error') { rect(glow, sx + 5, iy - 2, 2, 5); rect(glow, sx + 5, iy + 4, 2, 2); }
@@ -1135,7 +1146,8 @@ function drawWalker(f, b, t) {
   const handing = b.handing && b.wait > now, p = handing ? 1 - (b.wait - now) / HAND_MS : 0; // 0..1 through the hand-in
   const lean = handing ? (p < 0.7 ? 2 : 1) : moving ? stepN - 1 : 0;                     // bow while handing over; bounce while walking
   rect('rgba(0,0,0,.25)', Math.round(b.x) + 2, Math.round(b.y) + 15, 8, 2); // shadow
-  sprite(SPRITES[f] || SPRITES.robot, x, y, f, { flip: b.flip !== !!RIG[f]?.facesLeft, step: stepN, /* art drawn facing left mirrors the other way */ lean, eyesClosed: handing && p > 0.2 && p < 0.6 });
+  const k = skinKey(f);
+  sprite(SPRITES[k] || SPRITES.robot, x, y, k, { flip: b.flip !== !!RIG[k]?.facesLeft, step: stepN, /* art drawn facing left mirrors the other way */ lean, eyesClosed: handing && p > 0.2 && p < 0.6 });
   if (!b.paper) return;
   let px = Math.round(x) + (b.flip ? -3 : 10), py = Math.round(y) + 9;
   if (handing) { const tx = ceoX() + 279, ty = 90; px += (tx - px) * Math.min(1, p * 1.4); py += (ty - py) * Math.min(1, p * 1.4) - Math.sin(Math.min(1, p * 1.4) * Math.PI) * 3; }
@@ -1208,14 +1220,14 @@ function frame(t) {
   text(tr('title'), W / 2, 17, '#ffe9a8', 4);
   for (const [f, a, sx, sy, st, b] of labels) {
     const w = where(b);
-    text((SPRITES[f]?.name || f.toUpperCase()) + ' · ' + roleOf(f), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff', 2.6);
+    text(nameOf(f) + ' · ' + roleOf(f), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff', 2.6);
     text(w ? L().where[w] : L().st[st] || st, sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
     if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 8);
   }
   const cx = ceoX() + 274;
   text(tr('ceo'), cx, 122, '#ffe9a8');
   text(tr('stats', total, papers), cx, 128, '#ddd', 2.4);
-  if (lastOrder) bubble('→ ' + (SPRITES[lastOrder.f]?.name || lastOrder.f) + ': ' + lastOrder.text, cx, 66);
+  if (lastOrder) bubble('→ ' + nameOf(lastOrder.f) + ': ' + lastOrder.text, cx, 66);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -1226,7 +1238,7 @@ function renderRoster() {
   const now = Date.now(), work = [], rest = [];
   for (const [f, a] of agents) {
     const st = shown(a, now), b = bodies.get(f), w = b && where(b);
-    (ACTIVE.has(st) ? work : rest).push({ name: SPRITES[f]?.name || f, role: roleOf(f), st: w || st, label: w ? L().where[w] : L().st[st] || st, detail: ACTIVE.has(st) ? a.detail : '' });
+    (ACTIVE.has(st) ? work : rest).push({ name: nameOf(f), role: roleOf(f), st: w || st, label: w ? L().where[w] : L().st[st] || st, detail: ACTIVE.has(st) ? a.detail : '' });
   }
   roster.textContent = '';
   for (const [title, list] of [[tr('workingN', work.length), work], [tr('restingN', rest.length), rest]]) {
@@ -1264,7 +1276,7 @@ function renderList() {
   const list = document.getElementById('list'); list.textContent = '';
   for (const k of [...agents.keys(), 'ceo']) {
     const row = document.createElement('div'); row.className = 'row';
-    const name = document.createElement('b'); name.textContent = k === 'ceo' ? tr('ceo') : SPRITES[k]?.name || k;
+    const name = document.createElement('b'); name.textContent = k === 'ceo' ? tr('ceo') : nameOf(k) + (isRouter(k) ? '' : ' · ' + roleOf(k));
     const img = document.createElement('img'); img.alt = ''; const d = localStorage.getItem('sprite:' + k); if (d) img.src = d; else img.style.visibility = 'hidden';
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png'; inp.setAttribute('aria-label', tr('spriteFor', name.textContent));
     inp.onchange = () => upload(k, inp.files[0]);
@@ -1273,7 +1285,7 @@ function renderList() {
     let role = null;
     if (k !== 'ceo') {
       role = document.createElement('input'); role.type = 'text'; role.className = 'role'; role.maxLength = 28;
-      role.placeholder = L().roles?.[DEFAULT_ROLE[k] || 'assistant'] || ''; role.value = localStorage.getItem('role:' + k) || '';
+      role.placeholder = isRouter(k) ? L().roles?.[DEFAULT_ROLE[k] || 'assistant'] || '' : TEAM[k] || pretty(k); role.value = localStorage.getItem('role:' + k) || '';
       role.setAttribute('aria-label', tr('role') + ': ' + name.textContent);
       role.oninput = () => { const v = role.value.trim(); v ? localStorage.setItem('role:' + k, v) : localStorage.removeItem('role:' + k); if (!roster.hidden) renderRoster(); };
     }
@@ -1377,7 +1389,7 @@ if (new URLSearchParams(location.search).has('demo')) {
   const es = new EventSource('/events');
   es.onopen = () => setConn('live');
   es.onerror = () => setConn('reconnecting');
-  es.addEventListener('reset', () => { bodies.clear(); line.length = 0; for (const f of [...agents.keys()]) FIXED.includes(f) ? agents.set(f, { state: 'idle', detail: '', at: 0 }) : agents.delete(f); total = 0; lastOrder = null; });
+  es.addEventListener('reset', () => { bodies.clear(); line.length = 0; agents.clear(); META.clear(); total = 0; lastOrder = null; });
   es.addEventListener('replay', (m) => { try { JSON.parse(m.data).forEach(apply); } catch {} });
   es.addEventListener('agent-event', (m) => { try { apply(JSON.parse(m.data)); } catch {} });
 }
