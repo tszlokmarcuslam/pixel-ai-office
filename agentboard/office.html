@@ -15,7 +15,14 @@ canvas{display:block;margin:0 auto;image-rendering:pixelated}
 #langMenu,#themeMenu,#roster{position:fixed;top:40px;right:10px;z-index:3;margin:0;list-style:none}
 #langMenu button,#themeMenu button{display:block;width:100%;text-align:left;font:inherit;background:none;color:inherit;border:0;cursor:pointer}
 #themeMenu i{display:inline-block;width:10px;height:10px;margin-right:8px;vertical-align:-1px}
-#roster{width:400px;max-height:70vh;overflow:auto}
+#roster{width:360px;max-height:75vh;overflow:auto}
+#roster .card{display:flex;gap:10px;align-items:center;padding:6px 6px;margin:2px -6px}
+#roster .pic{width:36px;height:46px;image-rendering:pixelated;flex:none;background:rgba(255,255,255,.06)}
+#roster .info{min-width:0;flex:1}
+#roster .top{display:flex;gap:6px;align-items:baseline}
+#roster .top b{flex:none}
+#roster .role,#roster .proj,#roster .task{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#roster .task i{display:inline-block;width:7px;height:7px;margin-right:6px;vertical-align:1px}
 #roster .who{display:flex;gap:8px;align-items:baseline;margin:4px 0}
 #roster .who i{width:8px;height:8px;flex:none}
 #roster .who b{flex:none;width:70px}
@@ -47,7 +54,14 @@ body{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sy
 #themeMenu i{border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
 #roster{padding:8px 14px 10px}
 #roster h4{margin:8px 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5)}
-#roster .who i{border-radius:50%}
+#roster .card{border-radius:8px}
+#roster .card:hover{background:rgba(255,255,255,.06)}
+#roster .pic{border-radius:6px}
+#roster .top b{font-weight:600}
+#roster .role{color:rgba(255,255,255,.6)}
+#roster .proj{font-size:12px;color:#8fb8ff}
+#roster .task{font-size:12px;color:rgba(255,255,255,.75)}
+#roster .task i{border-radius:50%}
 #roster .who b{font-weight:600}
 #roster .who span{color:rgba(255,255,255,.65)}
 #roster .none{color:rgba(255,255,255,.4);margin:2px 0}
@@ -78,7 +92,9 @@ body.retro #langMenu button[aria-checked="true"]::before,body.retro #themeMenu b
 body.retro #themeMenu i{border-radius:0;border:1px solid #120b08;box-shadow:none}
 body.retro #roster{font:12px monospace;padding:4px 10px}
 body.retro #roster h4{color:#ffe9a8;font-size:12px;text-transform:none;letter-spacing:0;font-weight:bold}
-body.retro #roster .who i{border-radius:0}
+body.retro #roster .card,body.retro #roster .pic,body.retro #roster .task i{border-radius:0}
+body.retro #roster .proj{color:#9fe3c4}
+body.retro #roster .role{color:#ffe9a8}
 body.retro #roster .who span{color:#ccc}
 body.retro dialog h3{font-size:15px}
 body.retro dialog p{color:#fff}
@@ -948,6 +964,7 @@ const isRouter = (f) => (META.get(f) || 'router') === 'router';
 const skinOf = (f) => isRouter(f) ? (SPRITES[f] ? f : 'robot') : META.get(f) === 'codex' ? 'chatgpt' : META.get(f) === 'claude-code' ? 'claude' : 'robot';
 const skinKey = (f) => custom[f] ? f : skinOf(f); // an uploaded PNG for this exact agent wins
 const pretty = (id) => String(id).replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+const projectOf = (f) => { const p = agents.get(f)?.project; if (!p) return isRouter(f) ? 'Router' : ''; return /[_-]/.test(p) || p === p.toUpperCase() ? p.replace(/[_-]+/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : p; };
 const nameOf = (f) => isRouter(f) ? (SPRITES[f]?.name || pretty(f)) : META.get(f) === 'codex' ? 'Codex' : META.get(f) === 'claude-code' ? 'Claude' : pretty(f);
 const bodies = new Map(); // where each agent physically is: { x, y, mode: seat|walk|away, path, dest, wait, flip }
 let lastOrder = null, total = 0, papers = 0;
@@ -964,8 +981,8 @@ function apply(e) {
   const f = famOf(e), at = Date.parse(e.ts) || Date.now();
   if (!agents.has(f) && Date.now() - at > 2 * 3600e3) return; // old history: don't open desks for agents long gone
   META.set(f, e.platform && e.platform !== 'router' ? e.platform : 'router');
-  const who = e.platform === 'router' || f === e.agent ? '' : e.agent + ': ';
-  const a = { state: e.state, detail: who + (e.detail || ''), at };
+  const who = e.platform === 'router' || f === e.agent.toLowerCase() ? '' : e.agent + ': ';
+  const a = { state: e.state, detail: who + (e.detail || ''), at, task: e.task || '', project: e.project || agents.get(f)?.project || '' };
   // only a fresh finish (not replayed history) sends the agent to the CEO with paperwork
   if (e.state === 'done' && Date.now() - at < 10000) a.handIn = true;
   agents.set(f, a);
@@ -1221,7 +1238,7 @@ function frame(t) {
   for (const [f, a, sx, sy, st, b] of labels) {
     const w = where(b);
     text(nameOf(f) + ' · ' + roleOf(f), sx + 6, sy + 30, w === 'away' ? '#888' : '#fff', 2.6);
-    text(w ? L().where[w] : L().st[st] || st, sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
+    text((w ? L().where[w] : L().st[st] || st) + (projectOf(f) ? ' · ' + projectOf(f) : ''), sx + 6, sy + 35, w ? '#e0c080' : COLORS[st] || '#fff', 2.4);
     if (b.mode === 'seat' && st !== 'idle') bubble(a.detail, sx + 6, sy - 8);
   }
   const cx = ceoX() + 274;
@@ -1234,23 +1251,39 @@ requestAnimationFrame(frame);
 
 // ---------- team drop-down: who is working, who is resting ----------
 const teamBtn = document.getElementById('teamBtn'), roster = document.getElementById('roster');
+const iconCache = new Map(); // agent picture for the Team list, drawn once per look
+function iconFor(f) {
+  const k = skinKey(f), img = custom[k] || bundled[k], key = k + (img ? ':' + img.width + 'x' + img.height : '');
+  if (iconCache.has(key)) return iconCache.get(key);
+  const c = document.createElement('canvas'); c.width = 36; c.height = 46; const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  if (img) { const r = Math.min(36 / img.width, 46 / img.height); x.drawImage(img, (36 - img.width * r) / 2, 46 - img.height * r, img.width * r, img.height * r); }
+  else { const sp = SPRITES[k] || SPRITES.robot, pal = { ...BASE, ...sp.pal }; sp.rows.forEach((row, j) => [...row].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(6 + i * 2, 14 + j * 2, 2, 2); } })); }
+  const url = c.toDataURL(); iconCache.set(key, url); return url;
+}
 function renderRoster() {
   const now = Date.now(), work = [], rest = [];
   for (const [f, a] of agents) {
     const st = shown(a, now), b = bodies.get(f), w = b && where(b);
-    (ACTIVE.has(st) ? work : rest).push({ name: nameOf(f), role: roleOf(f), st: w || st, label: w ? L().where[w] : L().st[st] || st, detail: ACTIVE.has(st) ? a.detail : '' });
+    (ACTIVE.has(st) ? work : rest).push({ f, name: nameOf(f), role: roleOf(f), project: projectOf(f), st: w || st,
+      label: w ? L().where[w] : L().st[st] || st, task: ACTIVE.has(st) ? (a.detail || a.task) : '' });
   }
   roster.textContent = '';
   for (const [title, list] of [[tr('workingN', work.length), work], [tr('restingN', rest.length), rest]]) {
     const h = document.createElement('h4'); h.textContent = title; roster.append(h);
     if (!list.length) { const p = document.createElement('p'); p.className = 'none'; p.textContent = tr('nobody'); roster.append(p); }
     for (const it of list) {
-      const row = document.createElement('div'); row.className = 'who';
-      const dot = document.createElement('i'); dot.style.background = COLORS[it.st] || '#e0c080';
+      const card = document.createElement('div'); card.className = 'card';
+      const pic = document.createElement('img'); pic.className = 'pic'; pic.alt = ''; pic.src = iconFor(it.f);
+      const body = document.createElement('div'); body.className = 'info';
+      const top = document.createElement('div'); top.className = 'top';
       const n = document.createElement('b'); n.textContent = it.name;
-      const ro = document.createElement('em'); ro.textContent = it.role;
-      const s = document.createElement('span'); s.textContent = it.label + (it.detail ? ' · ' + it.detail : '');
-      row.append(dot, n, ro, s); roster.append(row);
+      const ro = document.createElement('span'); ro.className = 'role'; ro.textContent = it.role;
+      top.append(n, ro);
+      const pr = document.createElement('div'); pr.className = 'proj'; pr.textContent = it.project || '—';
+      const tk = document.createElement('div'); tk.className = 'task';
+      const dot = document.createElement('i'); dot.style.background = COLORS[it.st] || '#e0c080';
+      tk.append(dot, it.label + (it.task ? ' · ' + it.task : ''));
+      body.append(top, pr, tk); card.append(pic, body); roster.append(card);
     }
   }
 }

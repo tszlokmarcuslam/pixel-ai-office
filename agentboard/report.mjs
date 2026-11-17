@@ -111,6 +111,8 @@ async function hook(platform, evName) {
   const sub = p.agent_id && p.agent_type ? String(p.agent_type) : '';
   const who = sub || leadId;
   const extra = p.session_id ? { session: String(p.session_id).slice(0, 8) } : {};
+  const proj = process.env.CLAUDE_PROJECT_DIR || p.cwd || ''; // project root, not whatever subfolder the shell is in // which project this agent is working in (folder name)
+  if (proj) extra.project = clip(base(proj), 40);
   const say = (agent, state, detail, task) => event(agent, state, detail, task, platform, extra);
 
   switch (ev) {
